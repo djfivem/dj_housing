@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import heroPhoto from './assets/hero-mansion.jpg'
+import apartmentPhoto from './assets/prop-apartment.jpg'
+import housePhoto from './assets/prop-house.jpg'
+import mansionPhoto from './assets/prop-mansion.jpg'
+import trailerPhoto from './assets/prop-trailer.jpg'
 import { Desk } from './pages/Desk'
 import { idempotency, inGame, money, nui } from './services/nui'
 import type { Dashboard, PropertyCard } from './types'
@@ -21,11 +26,23 @@ const nav = [
   ['settings', 'Settings'],
 ] as const
 
-function artClass(image?: string) {
-  if (image === 'apartment') return 'art apartment'
-  if (image === 'trailer') return 'art trailer'
-  if (image === 'house') return 'art house'
-  return 'art mansion'
+function photoFor(image?: string) {
+  if (image === 'apartment') return apartmentPhoto
+  if (image === 'trailer') return trailerPhoto
+  if (image === 'house') return housePhoto
+  return mansionPhoto
+}
+
+function dueLabel(dueAt: number) {
+  const days = Math.max(0, Math.ceil((dueAt * 1000 - Date.now()) / 86400000))
+  if (days <= 0) return 'Due today'
+  return days === 1 ? 'Due in 1 day' : `Due in ${days} days`
+}
+
+function accessLabel(role: string) {
+  if (role === 'owner' || role === 'coowner') return 'Full Access'
+  if (role === 'resident') return 'Resident'
+  return 'Limited Access'
 }
 
 function project(property: PropertyCard) {
@@ -43,6 +60,10 @@ export function App() {
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('all')
   const [sort, setSort] = useState('newest')
+  const [priceBand, setPriceBand] = useState('any')
+  const [scope, setScope] = useState<'all' | 'mine'>('all')
+  const [garageTab, setGarageTab] = useState<'stored' | 'out'>('stored')
+  const [shellTab, setShellTab] = useState<'shells' | 'mlo'>('shells')
   const [category, setCategory] = useState('all')
   const [shell, setShell] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
@@ -94,7 +115,7 @@ export function App() {
   const selected = dash?.selected ?? dash?.properties.find((property) => property.id === selectedId) ?? null
   const properties = useMemo(() => {
     let list = dash?.properties ?? []
-    if (section === 'properties') list = list.filter((property) => property.role)
+    if (scope === 'mine' || section === 'properties') list = list.filter((property) => property.role)
     if (query) {
       const needle = query.toLowerCase()
       list = list.filter((property) => property.label.toLowerCase().includes(needle) || property.propertyType.includes(needle))
@@ -102,10 +123,13 @@ export function App() {
     if (kind === 'owned') list = list.filter((property) => property.status === 'owned')
     if (kind === 'rented') list = list.filter((property) => property.status === 'rented')
     if (kind === 'available') list = list.filter((property) => property.status === 'available')
+    if (priceBand === 'low') list = list.filter((property) => property.purchasePrice < 200000)
+    if (priceBand === 'mid') list = list.filter((property) => property.purchasePrice >= 200000 && property.purchasePrice <= 700000)
+    if (priceBand === 'high') list = list.filter((property) => property.purchasePrice > 700000)
     if (sort === 'price') list = [...list].sort((a, b) => b.purchasePrice - a.purchasePrice)
     if (sort === 'name') list = [...list].sort((a, b) => a.label.localeCompare(b.label))
     return list
-  }, [dash, query, kind, sort, section])
+  }, [dash, query, kind, sort, section, priceBand, scope])
 
   async function run(task: () => Promise<void>) {
     if (busy) return
@@ -123,7 +147,19 @@ export function App() {
       setModal({ type: 'settings' })
       return
     }
-    if (id === 'warrants' || id === 'admin' || id === 'properties' || id === 'browse') {
+    if (id === 'browse') {
+      setSection('browse')
+      setScope('all')
+      setKind('all')
+      return
+    }
+    if (id === 'properties') {
+      setSection('properties')
+      setScope('mine')
+      setKind('all')
+      return
+    }
+    if (id === 'warrants' || id === 'admin') {
       setSection(id)
       return
     }
@@ -151,7 +187,7 @@ export function App() {
         </div>
         <nav className="nav">
           {nav.map(([id, label]) => (
-            <button key={id} className={section === id ? 'active' : ''} onClick={() => focus(id)}>{label}</button>
+            <button key={id} className={section === id ? 'active' : ''} onClick={() => focus(id)}><NavIcon name={id} />{label}</button>
           ))}
           {dash.police && <button className={section === 'warrants' ? 'active' : ''} onClick={() => focus('warrants')}>Warrants</button>}
           {dash.admin && <button className={section === 'admin' ? 'active' : ''} onClick={() => focus('admin')}>Administration</button>}
@@ -169,28 +205,28 @@ export function App() {
       ) : (
       <main className="board">
         <section className="hero" id="home">
-          <div className="hero-art">
+          <div className="hero-art" style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.55)), url(${heroPhoto})` }}>
             <div className="hero-copy">
               <h2>Welcome Home, {dash.player.name}</h2>
               <p>Manage your properties, pay your bills, and make this space your own.</p>
             </div>
             <div className="stats">
-              <div className="stat"><div><span className="muted">Bank Balance</span><b>{money(dash.balance)}</b></div></div>
-              <div className="stat"><div><span className="muted">Owned Properties</span><b>{dash.counts.owned}</b></div></div>
-              <div className="stat"><div><span className="muted">Rented Property</span><b>{dash.counts.rented}</b></div></div>
-              <div className="stat"><div><span className="muted">Pending Bills</span><b>{dash.counts.pendingBills}</b></div></div>
+              <div className="stat"><NavIcon name="bills" /><div><span className="muted">Bank Balance</span><b>{money(dash.balance)}</b></div></div>
+              <div className="stat"><NavIcon name="home" /><div><span className="muted">Owned Properties</span><b>{dash.counts.owned}</b></div></div>
+              <div className="stat"><NavIcon name="properties" /><div><span className="muted">Rented Property</span><b>{dash.counts.rented}</b></div></div>
+              <div className="stat"><NavIcon name="storage" /><div><span className="muted">Pending Bills</span><b>{dash.counts.pendingBills}</b></div></div>
             </div>
           </div>
           <div className="hero-bottom">
             <div className="panel quick">
               <header><h3>Quick Actions</h3></header>
               <div className="quick-grid">
-                <button className="qa" onClick={() => focus('browse')}>Browse<span>Properties</span></button>
-                <button className="qa" onClick={() => focus('properties')}>My<span>Properties</span></button>
-                <button className="qa" onClick={() => focus('bills')}>Pay<span>Bills</span></button>
-                <button className="qa" onClick={() => focus('furniture')}>Furniture<span>Store</span></button>
-                <button className="qa" onClick={() => focus('garage')}>Garage</button>
-                <button className="qa" onClick={() => focus('storage')}>Storage</button>
+                <button className="qa" onClick={() => focus('browse')}><NavIcon name="browse" />Browse<span>Properties</span></button>
+                <button className="qa" onClick={() => focus('properties')}><NavIcon name="properties" />My<span>Properties</span></button>
+                <button className="qa" onClick={() => focus('bills')}><NavIcon name="bills" />Pay<span>Bills</span></button>
+                <button className="qa" onClick={() => focus('furniture')}><NavIcon name="furniture" />Furniture<span>Store</span></button>
+                <button className="qa" onClick={() => focus('garage')}><NavIcon name="garage" />Garage</button>
+                <button className="qa" onClick={() => focus('storage')}><NavIcon name="storage" />Storage</button>
               </div>
             </div>
             <div className="panel recent">
@@ -198,7 +234,7 @@ export function App() {
               <div className="recent-row">
                 {dash.properties.slice(0, 3).map((property) => (
                   <button key={property.id} className="mini" onClick={() => { setSelectedId(property.id); void refresh(property.id) }}>
-                    <span className={artClass(property.image)} />
+                    <img src={photoFor(property.image)} alt="" />
                     <strong>{property.label}</strong>
                     <span>{property.role ?? property.status}</span>
                   </button>
@@ -211,22 +247,34 @@ export function App() {
         <Panel id="browse" title="Browse Properties" hidden={hidden.browse} onClose={() => setHidden({ ...hidden, browse: true })} className="browse">
           <input className="search" placeholder="Search by name, type, or location" value={query} onChange={(event) => setQuery(event.target.value)} />
           <div className="filters">
-            <select aria-label="Type" value={kind} onChange={(event) => setKind(event.target.value)}>
-              <option value="all">All types</option>
-              <option value="owned">Owned</option>
-              <option value="rented">Rented</option>
-              <option value="available">Available</option>
-            </select>
-            <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
-              <option value="newest">Newest</option>
-              <option value="price">Price</option>
-              <option value="name">Name</option>
-            </select>
+            <label>Type
+              <select aria-label="Type" value={kind} onChange={(event) => setKind(event.target.value)}>
+                <option value="all">All</option>
+                <option value="owned">Owned</option>
+                <option value="rented">Rented</option>
+                <option value="available">Available</option>
+              </select>
+            </label>
+            <label>Price Range
+              <select aria-label="Price Range" value={priceBand} onChange={(event) => setPriceBand(event.target.value)}>
+                <option value="any">Any</option>
+                <option value="low">Under $200,000</option>
+                <option value="mid">$200,000 – $700,000</option>
+                <option value="high">Over $700,000</option>
+              </select>
+            </label>
+            <label>Sort By
+              <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+                <option value="newest">Newest</option>
+                <option value="price">Price</option>
+                <option value="name">Name</option>
+              </select>
+            </label>
           </div>
           <div className="scroll">
             {properties.map((property) => (
               <button key={property.id} className={`prop ${selected?.id === property.id ? 'selected' : ''}`} onClick={() => { setSelectedId(property.id); void refresh(property.id) }}>
-                <span className={artClass(property.image)} />
+                <img className="thumb" src={photoFor(property.image)} alt="" />
                 <span>
                   <strong>{property.label}</strong>
                   <span className={`badge ${property.status}`}>{property.status}</span>
@@ -241,7 +289,7 @@ export function App() {
 
         {selected && (
           <Panel id="details" title="Property Details" hidden={hidden.details} onClose={() => setHidden({ ...hidden, details: true })} className="details">
-            <div className={`detail-hero ${artClass(selected.image)}`} />
+            <img className="detail-hero" src={photoFor(selected.image)} alt="" />
             <div className="detail-body">
               <strong>{selected.label}</strong>
               <span className={`badge ${selected.role ?? selected.status}`}>{selected.role ?? selected.status}</span>
@@ -279,7 +327,7 @@ export function App() {
                 setNotice(result.ok ? `${item.label} purchased` : (result.error ?? 'purchase_failed'))
                 if (result.ok) await refresh(selected.id)
               })}>
-                <span className="art house" />
+                <span className={`furn ${item.category}`} />
                 <b>{item.label}</b>
                 <span>{money(item.price)}</span>
               </button>
@@ -288,9 +336,12 @@ export function App() {
         </Panel>
 
         <Panel id="garage" title="Garage" hidden={hidden.garage} onClose={() => setHidden({ ...hidden, garage: true })} className="garage">
-          <div className="tabs"><button className="on">My Vehicles</button></div>
+          <div className="tabs">
+            <button className={garageTab === 'stored' ? 'on' : ''} onClick={() => setGarageTab('stored')}>My Vehicles</button>
+            <button className={garageTab === 'out' ? 'on' : ''} onClick={() => setGarageTab('out')}>Out</button>
+          </div>
           <div className="scroll">
-            {(dash.vehicles ?? []).map((vehicle) => (
+            {(dash.vehicles ?? []).filter((vehicle) => (garageTab === 'stored' ? vehicle.state === 'stored' : vehicle.state !== 'stored')).map((vehicle) => (
               <div className="veh" key={vehicle.id}>
                 <div>
                   <strong>{vehicle.plate}</strong>
@@ -298,12 +349,14 @@ export function App() {
                 </div>
                 <button className="buy" disabled={busy} onClick={() => run(async () => {
                   if (!selected) return
-                  const result = await nui(vehicle.state === 'stored' ? 'takeVehicle' : 'storeVehicle', { propertyId: selected.id, vehicleId: vehicle.id })
-                  setNotice(result.ok ? `Vehicle ${vehicle.plate}` : (result.error ?? 'garage_failed'))
+                  const spawning = vehicle.state === 'stored'
+                  const result = await nui(spawning ? 'takeVehicle' : 'storeVehicle', { propertyId: selected.id, vehicleId: vehicle.id })
+                  setNotice(result.ok ? `${vehicle.plate} ${spawning ? 'spawned' : 'stored'}` : (result.error ?? 'garage_failed'))
+                  if (result.ok) await refresh(selected.id)
                 })}>{vehicle.state === 'stored' ? 'Spawn' : 'Store'}</button>
               </div>
             ))}
-            {(dash.vehicles ?? []).length === 0 && <p className="muted">No vehicles stored at this property.</p>}
+            {(dash.vehicles ?? []).filter((vehicle) => (garageTab === 'stored' ? vehicle.state === 'stored' : vehicle.state !== 'stored')).length === 0 && <p className="muted">No vehicles in this tab.</p>}
           </div>
         </Panel>
 
@@ -332,7 +385,7 @@ export function App() {
               <div className="bill" key={bill.id}>
                 <div>
                   <strong>{bill.label}</strong>
-                  <div className="muted">{money(bill.amount)}</div>
+                  <div className="muted">{selected?.label} · {dueLabel(bill.due_at)} · {money(bill.amount)}</div>
                 </div>
                 <button className="buy" disabled={busy} onClick={() => run(async () => {
                   const result = await nui('payBill', { billId: bill.id })
@@ -388,17 +441,22 @@ export function App() {
         </Panel>
 
         <Panel id="shells" title="Shells / MLOs" hidden={hidden.shells} onClose={() => setHidden({ ...hidden, shells: true })} className="shells">
+          <div className="tabs">
+            <button className={shellTab === 'shells' ? 'on' : ''} onClick={() => setShellTab('shells')}>Shells</button>
+            <button className={shellTab === 'mlo' ? 'on' : ''} onClick={() => setShellTab('mlo')}>MLOs</button>
+          </div>
           <div className="scroll">
-            {Object.entries(dash.catalog.shells).map(([id, item]) => (
+            {shellTab === 'shells' && Object.entries(dash.catalog.shells).map(([id, item]) => (
               <div className="shell-card" key={id}>
-                <span className="art mansion" style={{ width: 54, height: 36 }} />
+                <img src={mansionPhoto} alt="" />
                 <div>
                   <strong>{item.label}</strong>
                   <div className="muted">{item.model}</div>
                 </div>
-                <button className="buy" onClick={() => setShell(id)}>{shell === id ? 'Selected' : 'Select'}</button>
+                <button className="buy" onClick={() => { setShell(id); setNotice(`${item.label} will be used on the next shell purchase`) }}>{shell === id ? 'Selected' : 'Select'}</button>
               </div>
             ))}
+            {shellTab === 'mlo' && <p className="muted">MLO and IPL properties use their built interior. No shell is spawned for them.</p>}
           </div>
         </Panel>
 
@@ -409,7 +467,7 @@ export function App() {
                 <div className="person">{row.displayName.slice(0, 1)}</div>
                 <div>
                   <strong>{row.displayName}</strong>
-                  <div className="muted">{row.role}</div>
+                  <div className="muted">{accessLabel(row.role)}</div>
                 </div>
               </div>
             ))}
@@ -485,6 +543,19 @@ export function App() {
       )}
     </div>
   )
+}
+
+function NavIcon(props: { name: string }) {
+  const common = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, 'aria-hidden': true } as const
+  if (props.name === 'home') return <svg {...common}><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" /></svg>
+  if (props.name === 'properties') return <svg {...common}><path d="M4 10h7V4H4zm9 10h7v-6h-7zM4 20h7v-8H4zm9-8h7V4h-7z" /></svg>
+  if (props.name === 'browse') return <svg {...common}><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></svg>
+  if (props.name === 'garage') return <svg {...common}><path d="M4 16h16M6 16l2-6h8l2 6M7 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" /></svg>
+  if (props.name === 'bills') return <svg {...common}><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></svg>
+  if (props.name === 'storage') return <svg {...common}><path d="M4 7h16v4H4zm0 6h16v4H4z" /></svg>
+  if (props.name === 'furniture') return <svg {...common}><path d="M4 13h16v5H4zM6 13V9a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4" /></svg>
+  if (props.name === 'upgrades') return <svg {...common}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>
+  return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2" /></svg>
 }
 
 function Panel(props: { id: string; title: string; className: string; hidden?: boolean; onClose: () => void; children: ReactNode }) {

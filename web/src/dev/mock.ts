@@ -109,6 +109,18 @@ const access = [
 const keys = [
   { id: 'key-owner-1', accessLevel: 'owner', state: 'active', holderName: 'license:diesel' },
 ]
+const vehicles = [
+  { id: 'veh-1', plate: '10F239', model_hash: 1, state: 'stored', propertyId: 'vinewood_hills_mansion' },
+  { id: 'veh-2', plate: 'PGT220', model_hash: 2, state: 'stored', propertyId: 'vinewood_hills_mansion' },
+]
+const furniturePrices: Record<string, number> = {
+  sofa_modern: 2500,
+  tv_stand: 1200,
+  bed_double: 2000,
+  dining_table: 1800,
+  chair_wood: 450,
+  dresser: 1300,
+}
 const seen = new Set<string>()
 
 function counts() {
@@ -134,10 +146,7 @@ function dashboard(propertyId?: string): Dashboard {
     keys: mine && selected ? keys.filter((key) => key.state !== 'hidden') : [],
     furniture: mine && selected ? furniture.filter((row) => row.id.startsWith(selected.id)) : [],
     upgrades: mine && selected ? [...upgrades].filter((id) => id.startsWith(selected.id)).map((id) => ({ upgrade_id: id.split(':')[1] })) : [],
-    vehicles: mine && selected ? [
-      { id: 'veh-1', plate: '10F239', model_hash: 1, state: 'stored' },
-      { id: 'veh-2', plate: 'PGT220', model_hash: 2, state: 'stored' },
-    ] : [],
+    vehicles: mine && selected ? vehicles.filter((vehicle) => vehicle.propertyId === selected.id).map((vehicle) => ({ ...vehicle })) : [],
     stashes: [
       { key: 'shared', label: 'Household Storage', stashType: 'shared', accessLevel: 'resident', slots: 50, maxWeight: 150000 },
       { key: 'personal', label: 'Personal Locker', stashType: 'personal', accessLevel: 'resident', slots: 20, maxWeight: 40000 },
@@ -218,7 +227,7 @@ export async function handle(event: string, data?: unknown) {
     return { ok: true, data: { propertyId: property.id, price } }
   }
   if (event === 'payBill' || event === 'payAll') {
-    const due = bills.filter((bill) => bill.status === 'due' && (event === 'payAll' || bill.id === payload.billId))
+    const due = bills.filter((bill) => bill.status === 'due' && (event === 'payAll' ? bill.property_id === payload.propertyId : bill.id === payload.billId))
     const total = due.reduce((sum, bill) => sum + bill.amount, 0)
     if (balance < total) return fail('insufficient_funds')
     balance -= total
@@ -226,7 +235,8 @@ export async function handle(event: string, data?: unknown) {
     return { ok: true, data: { amount: total, paid: total } }
   }
   if (event === 'buyFurniture') {
-    const price = 2500
+    const price = furniturePrices[String(payload.catalogId)] ?? 0
+    if (price <= 0) return fail('not_found')
     if (balance < price) return fail('insufficient_funds')
     balance -= price
     furniture.push({ id: `${payload.propertyId}:${key}`, catalog_id: String(payload.catalogId), label: 'Furniture', state: 'stored', model: 'prop' })
@@ -342,6 +352,13 @@ export async function handle(event: string, data?: unknown) {
     if (row) row.state = 'revoked'
     return { ok: true, data: {} }
   }
-  if (event === 'storeVehicle' || event === 'takeVehicle') return { ok: true, data: { vehicleId: 'veh-1', plate: '10F239', modelHash: 1 } }
+  if (event === 'storeVehicle' || event === 'takeVehicle') {
+    const vehicle = vehicles.find((item) => item.id === payload.vehicleId)
+    if (!vehicle || vehicle.propertyId !== payload.propertyId) return fail('not_found')
+    if (event === 'takeVehicle' && vehicle.state !== 'stored') return fail('not_stored')
+    if (event === 'storeVehicle' && vehicle.state !== 'out') return fail('not_out')
+    vehicle.state = event === 'takeVehicle' ? 'out' : 'stored'
+    return { ok: true, data: { vehicleId: vehicle.id, plate: vehicle.plate, modelHash: vehicle.model_hash, state: vehicle.state } }
+  }
   return fail('unsupported')
 }
