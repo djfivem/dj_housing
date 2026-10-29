@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import heroPhoto from './assets/hero-mansion.jpg'
 import apartmentPhoto from './assets/prop-apartment.jpg'
 import housePhoto from './assets/prop-house.jpg'
@@ -70,7 +70,11 @@ export function App() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [stashNote, setStashNote] = useState<string | null>(null)
+  const busyRef = useRef(false)
+  const modalRef = useRef(modal)
+  modalRef.current = modal
 
   const refresh = useCallback(async (propertyId?: string | null) => {
     const result = await nui<Dashboard>('dashboard', { propertyId: propertyId ?? undefined })
@@ -98,11 +102,14 @@ export function App() {
     }
     window.addEventListener('message', onMessage)
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key !== 'Escape') return
+      if (modalRef.current) {
         setModal(null)
-        setVisible(false)
-        void nui('close')
+        setFormError(null)
+        return
       }
+      setVisible(false)
+      void nui('close')
     }
     window.addEventListener('keydown', onKey)
     if (!inGame()) void refresh(null)
@@ -111,6 +118,12 @@ export function App() {
       window.removeEventListener('keydown', onKey)
     }
   }, [refresh])
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 4200)
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   const selected = dash?.selected ?? dash?.properties.find((property) => property.id === selectedId) ?? null
   const properties = useMemo(() => {
@@ -131,19 +144,36 @@ export function App() {
     return list
   }, [dash, query, kind, sort, section, priceBand, scope])
 
+  const catalog = useMemo(
+    () => (dash?.catalog.furniture ?? []).filter((item) => category === 'all' || item.category === category),
+    [dash, category],
+  )
+  const ownedUpgrades = useMemo(() => new Set((dash?.upgrades ?? []).map((row) => row.upgrade_id)), [dash])
+  const visibleVehicles = useMemo(
+    () => (dash?.vehicles ?? []).filter((vehicle) => (garageTab === 'stored' ? vehicle.state === 'stored' : vehicle.state !== 'stored')),
+    [dash, garageTab],
+  )
+
   async function run(task: () => Promise<void>) {
-    if (busy) return
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setNotice(null)
     try {
       await task()
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
 
+  function reveal(id: string) {
+    setHidden((current) => (current[id] ? { ...current, [id]: false } : current))
+  }
+
   function focus(id: string) {
     if (id === 'settings') {
+      setFormError(null)
       setModal({ type: 'settings' })
       return
     }
@@ -151,12 +181,14 @@ export function App() {
       setSection('browse')
       setScope('all')
       setKind('all')
+      reveal('browse')
       return
     }
     if (id === 'properties') {
       setSection('properties')
       setScope('mine')
       setKind('all')
+      reveal('browse')
       return
     }
     if (id === 'warrants' || id === 'admin') {
@@ -164,16 +196,15 @@ export function App() {
       return
     }
     setSection('home')
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setScope('all')
+    reveal(id === 'home' ? 'browse' : id)
+    if (id !== 'home') document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 
   if (!visible) return null
   if (!dash) {
     return <div className="app"><p className="notice">{error ?? 'Loading housing...'}</p></div>
   }
-
-  const catalog = dash.catalog.furniture.filter((item) => category === 'all' || item.category === category)
-  const ownedUpgrades = new Set((dash.upgrades ?? []).map((row) => row.upgrade_id))
 
   return (
     <div className="app">
@@ -199,6 +230,7 @@ export function App() {
             <span>Welcome back</span>
           </div>
         </div>
+        <p className="tagline">More than a house. <b>It’s yours.</b></p>
       </aside>
       {(section === 'warrants' || section === 'admin') ? (
         <Desk mode={section} dash={dash} busy={busy} run={run} refresh={refresh} setNotice={setNotice} />
@@ -234,7 +266,7 @@ export function App() {
               <div className="recent-row">
                 {dash.properties.slice(0, 3).map((property) => (
                   <button key={property.id} className="mini" onClick={() => { setSelectedId(property.id); void refresh(property.id) }}>
-                    <img src={photoFor(property.image)} alt="" />
+                    <img src={photoFor(property.image)} alt="" decoding="async" />
                     <strong>{property.label}</strong>
                     <span>{property.role ?? property.status}</span>
                   </button>
@@ -274,10 +306,9 @@ export function App() {
           <div className="scroll">
             {properties.map((property) => (
               <button key={property.id} className={`prop ${selected?.id === property.id ? 'selected' : ''}`} onClick={() => { setSelectedId(property.id); void refresh(property.id) }}>
-                <img className="thumb" src={photoFor(property.image)} alt="" />
+                <img className="thumb" src={photoFor(property.image)} alt="" decoding="async" />
                 <span>
-                  <strong>{property.label}</strong>
-                  <span className={`badge ${property.status}`}>{property.status}</span>
+                  <span className="name-line"><strong>{property.label}</strong><span className={`badge ${property.status}`}>{property.status}</span></span>
                   <span className="price">{money(property.listed && property.listingPrice ? property.listingPrice : property.purchasePrice)}</span>
                   <span className="meta"><span>{property.bedrooms} bed</span><span>{property.bathrooms} bath</span><span>{property.garages} car</span></span>
                 </span>
@@ -289,7 +320,7 @@ export function App() {
 
         {selected && (
           <Panel id="details" title="Property Details" hidden={hidden.details} onClose={() => setHidden({ ...hidden, details: true })} className="details">
-            <img className="detail-hero" src={photoFor(selected.image)} alt="" />
+            <img className="detail-hero" src={photoFor(selected.image)} alt="" decoding="async" />
             <div className="detail-body">
               <strong>{selected.label}</strong>
               <span className={`badge ${selected.role ?? selected.status}`}>{selected.role ?? selected.status}</span>
@@ -306,8 +337,8 @@ export function App() {
             </div>
             {selected.status === 'available' && (
               <div className="actions">
-                <button className="orange" disabled={busy} onClick={() => setModal({ type: 'purchase', property: selected, key: idempotency() })}>Purchase</button>
-                <button className="ghost" disabled={busy} onClick={() => setModal({ type: 'rent', property: selected, key: idempotency() })}>Rent</button>
+                <button className="orange" disabled={busy} onClick={() => { setFormError(null); setModal({ type: 'purchase', property: selected, key: idempotency() }) }}>Purchase</button>
+                <button className="ghost" disabled={busy} onClick={() => { setFormError(null); setModal({ type: 'rent', property: selected, key: idempotency() }) }}>Rent</button>
               </div>
             )}
           </Panel>
@@ -341,7 +372,7 @@ export function App() {
             <button className={garageTab === 'out' ? 'on' : ''} onClick={() => setGarageTab('out')}>Out</button>
           </div>
           <div className="scroll">
-            {(dash.vehicles ?? []).filter((vehicle) => (garageTab === 'stored' ? vehicle.state === 'stored' : vehicle.state !== 'stored')).map((vehicle) => (
+            {visibleVehicles.map((vehicle) => (
               <div className="veh" key={vehicle.id}>
                 <div>
                   <strong>{vehicle.plate}</strong>
@@ -356,7 +387,7 @@ export function App() {
                 })}>{vehicle.state === 'stored' ? 'Spawn' : 'Store'}</button>
               </div>
             ))}
-            {(dash.vehicles ?? []).filter((vehicle) => (garageTab === 'stored' ? vehicle.state === 'stored' : vehicle.state !== 'stored')).length === 0 && <p className="muted">No vehicles in this tab.</p>}
+            {visibleVehicles.length === 0 && <p className="muted empty">No vehicles in this tab.</p>}
           </div>
         </Panel>
 
@@ -398,9 +429,13 @@ export function App() {
           </div>
           <button className="orange block" disabled={busy || !selected} onClick={() => run(async () => {
             if (!selected) return
-            const result = await nui('payAll', { propertyId: selected.id })
-            setNotice(result.ok ? 'Bills paid' : (result.error ?? 'payment_failed'))
-            if (result.ok) await refresh(selected.id)
+            const result = await nui<{ paid?: number; error?: string }>('payAll', { propertyId: selected.id })
+            if (!result.ok) {
+              setNotice(result.error ?? 'payment_failed')
+              return
+            }
+            setNotice(result.data?.error ? `${result.data.error}` : 'Bills paid')
+            await refresh(selected.id)
           })}>Pay All Bills</button>
         </Panel>
 
@@ -431,8 +466,12 @@ export function App() {
           </div>
           <div className="map">
             <svg viewBox="0 0 200 140" aria-hidden="true">
-              <path d="M20 30 C40 10, 80 20, 110 18 C150 16, 180 40, 170 70 C160 100, 120 120, 80 112 C40 104, 10 80, 20 30Z" fill="#1c2633" stroke="#334155" />
-              <path d="M30 78 C50 90, 70 86, 90 96" fill="none" stroke="#243140" strokeWidth="6" />
+              <rect width="200" height="140" fill="#121820" />
+              {Array.from({ length: 8 }, (_, index) => (
+                <line key={`v${index}`} x1={index * 28} y1="0" x2={index * 22 + 20} y2="140" stroke="#243044" strokeWidth="6" />
+              ))}
+              <path d="M10 90 C40 70, 70 100, 110 80 S170 40, 200 55" fill="none" stroke="#1c2836" strokeWidth="14" />
+              <path d="M0 40 H200 M30 0 V140 M120 0 V140" fill="none" stroke="#2a3848" strokeWidth="2" />
             </svg>
             {dash.properties.map((property) => (
               <button key={property.id} className={`blip ${property.role ?? property.status}`} style={project(property)} title={property.label} onClick={() => { setSelectedId(property.id); void refresh(property.id) }} />
@@ -448,7 +487,7 @@ export function App() {
           <div className="scroll">
             {shellTab === 'shells' && Object.entries(dash.catalog.shells).map(([id, item]) => (
               <div className="shell-card" key={id}>
-                <img src={mansionPhoto} alt="" />
+                <img src={photoFor(item.model.includes('trailer') ? 'trailer' : item.model.includes('v16') ? 'house' : 'mansion')} alt="" decoding="async" />
                 <div>
                   <strong>{item.label}</strong>
                   <div className="muted">{item.model}</div>
@@ -477,11 +516,10 @@ export function App() {
         </Panel>
       </main>
       )}
-      <div className="footer-note">More Than Just a House… <b>IT’S YOURS.</b></div>
-      {notice && <div className="notice">{notice}</div>}
+      {notice && <div className="notice" role="status">{notice}</div>}
       {error && <div className="error">{error}</div>}
       {modal && (
-        <div className="modal-back" onClick={() => setModal(null)}>
+        <div className="modal-back" onClick={() => { setModal(null); setFormError(null) }}>
           <div className="panel modal" onClick={(event) => event.stopPropagation()}>
             {modal.type === 'settings' && (
               <>
@@ -496,6 +534,7 @@ export function App() {
                 <p>{modal.property.label}</p>
                 <p className="price">{money(modal.type === 'purchase' ? modal.property.purchasePrice : modal.property.rentalPrice)}</p>
                 <p className="muted">The server uses the stored price. This request cannot be submitted twice.</p>
+                {formError && <p className="form-error" role="alert">{formError}</p>}
                 <button className="orange" disabled={busy} onClick={() => run(async () => {
                   const price = modal.type === 'purchase' ? modal.property.purchasePrice : modal.property.rentalPrice
                   const result = await nui(modal.type === 'purchase' ? 'purchase' : 'rent', {
@@ -503,13 +542,18 @@ export function App() {
                     idempotencyKey: modal.key,
                     mode: modal.type === 'purchase' ? 'purchase' : 'rent',
                     expectedPrice: price,
-                    shellModel: shell,
+                    shellModel: modal.property.propertyType === 'shell' ? shell ?? undefined : undefined,
                   })
-                  setNotice(result.ok ? 'Transaction complete' : (result.error ?? 'transaction_failed'))
-                  if (result.ok) {
-                    setModal(null)
-                    await refresh(modal.property.id)
+                  if (!result.ok) {
+                    const message = result.error ?? 'transaction_failed'
+                    setFormError(message)
+                    setNotice(message)
+                    return
                   }
+                  setFormError(null)
+                  setNotice('Transaction complete')
+                  setModal(null)
+                  await refresh(modal.property.id)
                 })}>Confirm</button>
               </>
             )}
