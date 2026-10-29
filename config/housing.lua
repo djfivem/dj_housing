@@ -91,6 +91,7 @@ Housing.Config.Integrations = {
     },
     garage = {
         -- auto registers the first started garage that has a published house API.
+        -- jg-advancedgarages v3 uses registerGarage. The same id is kept so stored vehicles stay linked.
         -- builtin keeps only the plate list in this resource.
         -- qb-garages | jg-advancedgarages | qs-advancedgarages | builtin
         system = 'auto',

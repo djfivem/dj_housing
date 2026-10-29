@@ -124,4 +124,10 @@ end
 function Auth.audit(ctx, entry)
     entry.created_at = ctx.now()
     ctx.repo.insertAudit(entry)
+    local category = entry.category
+    if entry.property_id and (category == 'transaction' or category == 'rental' or category == 'key' or category == 'access' or category == 'admin') then
+        if Housing.Garages and Housing.Garages.notify then
+            Housing.Garages.notify(entry.property_id)
+        end
+    end
 end

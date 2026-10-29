@@ -118,6 +118,24 @@ if not booted then
     end)
 
     AddEventHandler('onResourceStart', function(resource)
+        if resource == 'jg-advancedgarages' or resource == 'qb-garages' or resource == 'qs-advancedgarages' then
+            CreateThread(function()
+                Wait(500)
+                local context = Housing.Runtime.context
+                if not context or not Housing.Runtime.env then
+                    return
+                end
+                local adapter = Housing.Garages.bind(Housing.Config, Housing.Runtime.env)
+                context.garages = adapter
+                Housing.Runtime.garages = adapter
+                if context.integrations then
+                    context.integrations.garage = adapter.report
+                end
+                if adapter.registerAll then
+                    adapter.registerAll()
+                end
+            end)
+        end
         if resource == 'oxmysql' or resource == 'ox_inventory' or resource == 'es_extended' or resource == 'qb-core' or resource == 'qbx_core' or resource == 'qb-inventory' or resource == 'qs-inventory' then
             CreateThread(function()
                 Wait(500)

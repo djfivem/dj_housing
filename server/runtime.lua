@@ -151,6 +151,7 @@ function Housing.Runtime.build(repo)
         garages = garages,
     }
     Housing.Runtime.garages = garages
+    Housing.Runtime.env = env
     function ctx.setInstance(source, data, returnCoords)
         if data.bucket and data.bucket > 0 then
             SetPlayerRoutingBucket(source, data.bucket)

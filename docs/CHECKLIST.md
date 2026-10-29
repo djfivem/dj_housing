@@ -4,7 +4,7 @@
 
 - Shared constants, validation, enums, and config for framework, inventory, police, shells, properties, and performance.
 - SQL schema and `database/migrations/001_init.sql`.
-- Domain services for purchase, rental, keys, stashes, warrants, raids, seizure, weekly water/power/garbage bills, furniture, garage records, house images, and admin repair. Covered by `lua5.4 tests/run.lua`: 80 passed, 0 failed.
+- Domain services for purchase, rental, keys, stashes, warrants, raids, seizure, weekly water/power/garbage bills, furniture, garage records, house images, and admin repair. Covered by `lua5.4 tests/run.lua`: 81 passed, 0 failed.
 - Framework adapters for ESX, QBCore, Qbox, and standalone, with ambiguity refusal. Bill payment still moves money through those adapters.
 - Inventory adapters for ox_inventory, qb-inventory, qs-inventory, lj-inventory, ps-inventory, origen_inventory, codem-inventory, and a custom export map. origen and codem only add, remove, and search key items. `liveVerified` is false on every adapter.
 - Client entry, shell spawn, MLO/IPL path, markers, NUI focus, and resource-stop cleanup.

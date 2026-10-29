@@ -383,5 +383,8 @@ function Services.revokeAccess(ctx, source, raw)
     current.revoked_at = ctx.now()
     current.revoked_by = player.characterId
     ctx.repo.upsertAccess(current)
+    if Housing.Garages and Housing.Garages.notify then
+        Housing.Garages.notify(propertyId)
+    end
     return Util.ok({ propertyId = propertyId })
 end

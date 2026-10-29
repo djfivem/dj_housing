@@ -630,6 +630,9 @@ function Services.adminTransfer(ctx, source, raw)
         revoked_by = nil,
     })
     ctx.repo.updateProperty(property.id, { status = 'owned', enabled = 1, listed = 0, listing_price = Housing.Null })
+    if Housing.Garages and Housing.Garages.notify then
+        Housing.Garages.notify(property.id)
+    end
     return Util.ok({ propertyId = property.id, characterId = target.characterId })
 end
 

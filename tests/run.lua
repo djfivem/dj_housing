@@ -559,6 +559,36 @@ for index = 1, #registered do
     end
 end
 check('jg garage uses housing access', #registered == 4 and ownerGarage)
+local jgCalls = { register = 0, update = 0, refresh = 0 }
+local jgAdapter = Housing.Garages.bind({
+    Integrations = { garage = { system = 'jg-advancedgarages' } },
+}, {
+    getResourceState = function(name) return name == 'jg-advancedgarages' and 'started' or 'missing' end,
+    exports = {
+        ['jg-advancedgarages'] = {
+            registerGarage = function(payload)
+                jgCalls.register = jgCalls.register + 1
+                return 'advanced_housing:' .. payload.id
+            end,
+            updateGarage = function(garageId)
+                jgCalls.update = jgCalls.update + 1
+                return garageId:find('housing_', 1, true) ~= nil
+            end,
+            refreshGarageAccess = function(garageId)
+                jgCalls.refresh = jgCalls.refresh + 1
+                return garageId == 'advanced_housing:housing_vinewood_hills_mansion'
+            end,
+            unregisterGarage = function()
+                return true
+            end,
+        },
+    },
+})
+jgAdapter.registerAll()
+jgAdapter.registerAll()
+Housing.Runtime.garages = jgAdapter
+local refreshed = Housing.Garages.notify('vinewood_hills_mansion')
+check('jg keeps its garage id and refreshes access', jgCalls.register == 4 and jgCalls.update == 4 and refreshed == true and jgCalls.refresh == 1)
 local keyGarage = Housing.Garages.bind({
     Integrations = { garage = { system = 'cd_garage' } },
 }, { getResourceState = function() return 'started' end })
