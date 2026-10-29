@@ -1,0 +1,50 @@
+# Installation
+
+## Place the resource
+
+Copy this repository to `resources/advanced_housing`. The folder name has to match the resource name in `fxmanifest.lua`.
+
+## Database
+
+Start `oxmysql` and `PolyZone` before this resource. Both are hard dependencies. Apply `database/schema.sql` once, or let the resource run `database/migrations/001_init.sql` and then the idempotent column checks for image URLs, lot polygons, and weekly utility rates. The runner records versions `001` and `002` in `housing_schema_migrations` and does not drop tables.
+
+Housing does not store stash item rows. The selected inventory owns those contents.
+
+## server.cfg
+
+```cfg
+ensure oxmysql
+ensure PolyZone
+ensure screenshot-basic
+ensure advanced_housing
+set housing_fivemanage_key "your-fivemanage-key"
+```
+
+`screenshot-basic` is optional. It is only used when an owner captures a house photo. The FiveManage key stays in that server convar. Do not put it in `config/housing.lua` or in the client.
+
+Banking, dispatch, garage, inventory, and framework resources stay optional. Start the one you use before `advanced_housing`. If several banking or dispatch resources are started, housing uses the first match and does not refuse to boot. Frameworks and inventories still refuse to guess when more than one is started.
+
+Start the framework and the chosen inventory before `advanced_housing` when you rely on automatic detection. If more than one framework (`es_extended`, `qb-core`, `qbx_core`) or more than one supported inventory is started, the resource refuses to guess and prints `ambiguous_framework` or `ambiguous_inventory`. Set `Housing.Config.Framework` and `Housing.Config.Inventory` in `config/shared.lua` in that case.
+
+## Permissions
+
+```cfg
+add_ace group.admin housing.admin allow
+add_ace group.admin housing.police allow
+```
+
+`housing.police` is an override. Job and grade checks in `config/police.lua` are the normal police path. Standalone mode does not treat every player as admin or police. Add license identifiers to `Housing.Config.Frameworks.standalone.admins` and `.police` only for the people who should have those roles.
+
+## Frontend
+
+`web/dist` is already built. After editing `web/src`:
+
+```bash
+cd web
+npm install
+npm run build
+```
+
+## First boot checks
+
+The server console reports the selected framework, inventory, and any integration that is configured but not started. A missing optional integration is skipped. A missing required dependency (`oxmysql` or `PolyZone`) stops the resource. A missing explicitly selected framework or inventory stops that adapter and is printed. It does not fall back to an open inventory or to unrestricted admin.
