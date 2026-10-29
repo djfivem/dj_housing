@@ -239,7 +239,8 @@ export async function handle(event: string, data?: unknown) {
     if (price <= 0) return fail('not_found')
     if (balance < price) return fail('insufficient_funds')
     balance -= price
-    furniture.push({ id: `${payload.propertyId}:${key}`, catalog_id: String(payload.catalogId), label: 'Furniture', state: 'stored', model: 'prop' })
+    const labels: Record<string, string> = { sofa_modern: 'Sofa', tv_stand: 'TV Stand', bed_double: 'Bed', dining_table: 'Dining Table', chair_wood: 'Chair', dresser: 'Dresser' }
+    furniture.push({ id: `${payload.propertyId}:${key}`, catalog_id: String(payload.catalogId), label: labels[String(payload.catalogId)] ?? 'Furniture', state: 'stored', model: 'prop' })
     seen.add(key)
     return { ok: true, data: { furnitureId: key } }
   }
@@ -336,6 +337,53 @@ export async function handle(event: string, data?: unknown) {
     }
     audit.unshift({ id: String(payload.idempotencyKey ?? event), action_name: event, category: 'admin' })
     return { ok: true, data: {} }
+  }
+  if (event === 'renew') {
+    const property = properties.find((item) => item.id === payload.propertyId)
+    if (!property || property.role !== 'tenant') return fail('not_authorised')
+    if (payload.mode !== 'renew') return fail('invalid_payload')
+    if (payload.expectedPrice !== undefined && payload.expectedPrice !== property.rentalPrice) return fail('price_mismatch')
+    if (balance < property.rentalPrice) return fail('insufficient_funds')
+    balance -= property.rentalPrice
+    return { ok: true, data: { price: property.rentalPrice } }
+  }
+  if (event === 'list') {
+    const property = properties.find((item) => item.id === payload.propertyId)
+    if (!property || property.role !== 'owner') return fail('not_authorised')
+    const price = Number(payload.price)
+    if (!Number.isFinite(price) || price < 1000) return fail('invalid_price')
+    property.listed = true
+    property.listingPrice = price
+    return { ok: true, data: { price } }
+  }
+  if (event === 'unlist') {
+    const property = properties.find((item) => item.id === payload.propertyId)
+    if (!property || property.role !== 'owner') return fail('not_authorised')
+    property.listed = false
+    property.listingPrice = null
+    return { ok: true, data: {} }
+  }
+  if (event === 'grantAccess') {
+    access.push({
+      characterId: String(payload.targetCharacterId),
+      framework: String(payload.targetFramework),
+      displayName: String(payload.displayName || payload.targetCharacterId),
+      role: String(payload.role),
+      revoked: false,
+    })
+    return { ok: true, data: {} }
+  }
+  if (event === 'revokeAccess') {
+    const row = access.find((item) => item.characterId === payload.targetCharacterId)
+    if (!row || row.role === 'owner') return fail('not_authorised')
+    row.revoked = true
+    return { ok: true, data: {} }
+  }
+  if (event === 'revokePropertyKeys') {
+    keys.forEach((row) => {
+      if (row.accessLevel !== 'owner') row.state = 'revoked'
+    })
+    return { ok: true, data: { count: keys.length } }
   }
   if (event === 'enter') {
     return { ok: true, data: { propertyId: payload.propertyId, propertyType: 'shell', bucket: 12 } }

@@ -40,7 +40,7 @@ export function Desk(props: Props) {
   }
 
   return (
-    <main className="desk">
+    <div className="desk">
       <section className="panel">
         <header><h3>{props.mode === 'warrants' ? 'Warrants & raids' : 'Administration'}</h3></header>
         <div className="scroll">
@@ -231,6 +231,6 @@ export function Desk(props: Props) {
           </section>
         </>
       )}
-    </main>
+    </div>
   )
 }

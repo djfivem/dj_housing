@@ -47,6 +47,6 @@ Bills are generated from `config/housing.lua` rates. Pay one or pay all from the
 
 ## NUI
 
-`/housing` opens the dashboard. Escape and the close control release NUI focus. The client also clears focus on resource stop. Purchase and rental buttons send one idempotency key per confirmation dialog, and the UI ignores a second click while a request is in flight.
+`/housing` opens a centered management window. The sidebar groups My House, furniture, bills, keys, permissions, upgrades, garage, storage, and the marketplace. Accent color is orange (`#ff7a18`) on a near-black panel. Escape closes a dialog first, then the window, and both Escape and the close control release NUI focus. The client also clears focus on resource stop. Purchase and rental buttons send one idempotency key per confirmation dialog, and the UI ignores a second click while a request is in flight.
 
-Property cards use generated gradients rather than photographs, so the resource does not depend on remote images.
+Property photos are original images bundled in `web/dist/assets`. They are not loaded from a remote host.

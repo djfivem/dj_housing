@@ -8,7 +8,7 @@
 - Framework adapters for ESX, QBCore, Qbox, and standalone, with ambiguity refusal.
 - Inventory adapters for ox_inventory, qb-inventory, qs-inventory, lj-inventory, ps-inventory, and a custom export map. `liveVerified` is false on every adapter.
 - Client entry, shell spawn, MLO/IPL path, markers, NUI focus, and resource-stop cleanup.
-- NUI dashboard matching the supplied dark orange layout, plus warrant and admin desks bound to the real callback names. `npm run build` succeeded. Headless Chrome exercised purchase failure, rental, bills, furniture, stash, keys, Escape, the police desk, and the admin desk against the Vite dev mock.
+- NUI management window in the orange (`#ff7a18`) palette: grouped sidebar, property page, marketplace, bills, keys, permissions, upgrades, furniture, garage, and storage. Warrant and admin desks stay bound to the real callback names. `npm run build` succeeded. Headless Chrome exercised purchase failure, a single rental, one bill payment, furniture order, vehicle spawn, marketplace filters, Escape, the police desk, and the admin desk against the Vite dev mock. Preview images are in `preview/`.
 - Docs listed in the resource request.
 
 ## Not done, because this workspace has no FiveM server
