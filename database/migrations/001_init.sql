@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS housing_properties (
     shell_options_json JSON NULL,
     ipls_json JSON NULL,
     image_key VARCHAR(32) NOT NULL DEFAULT 'default',
+    image_url VARCHAR(512) NULL,
+    zone_json JSON NULL,
     bedrooms INT NOT NULL DEFAULT 1,
     bathrooms INT NOT NULL DEFAULT 1,
     garages INT NOT NULL DEFAULT 0,
@@ -162,7 +164,16 @@ CREATE TABLE IF NOT EXISTS housing_bills (
     due_at INT NOT NULL,
     paid_at INT NULL,
     paid_by VARCHAR(80) NULL,
+    week_id INT NULL,
     INDEX idx_housing_bills_property (property_id, status)
+);
+
+CREATE TABLE IF NOT EXISTS housing_utility_rates (
+    week_id INT NOT NULL,
+    bill_type VARCHAR(32) NOT NULL,
+    amount INT NOT NULL,
+    rolled_at INT NOT NULL,
+    PRIMARY KEY (week_id, bill_type)
 );
 
 CREATE TABLE IF NOT EXISTS housing_furniture (

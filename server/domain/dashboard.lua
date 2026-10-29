@@ -13,7 +13,9 @@ local function publicProperty(property, ownership, tenancy)
         purchasePrice = property.purchase_price,
         rentalPrice = property.rental_price,
         rentalPeriodHours = property.rental_period_hours,
-        image = property.image_key,
+        image = property.image_url or property.image_key,
+        imageUrl = property.image_url,
+        zone = property.zone,
         bedrooms = property.bedrooms,
         bathrooms = property.bathrooms,
         garages = property.garages,
@@ -145,6 +147,7 @@ function Services.dashboard(ctx, source, selectedId)
             saleReturnPercent = (ctx.config.housing and ctx.config.housing.saleReturnPercent) or 0,
             minListingPrice = (ctx.config.housing and ctx.config.housing.minListingPrice) or 0,
         },
+        utilities = Housing.Utilities and Housing.Utilities.snapshot(ctx) or nil,
     }
     if police then
         payload.warrants = ctx.repo.listWarrants(selectedId)

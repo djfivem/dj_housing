@@ -45,6 +45,7 @@ function Housing.MemoryRepository.new(clock)
         transfers = {},
         audit = {},
         migrations = {},
+        utilityRates = {},
         auditSeq = 0,
     }
 
@@ -441,6 +442,39 @@ function Housing.MemoryRepository.new(clock)
             return false
         end
         assign(row, fields)
+        return true
+    end
+
+    function repo.hasBillForWeek(propertyId, billType, weekId)
+        for _, row in pairs(state.bills) do
+            if row.property_id == propertyId and row.bill_type == billType and row.week_id == weekId then
+                return true
+            end
+        end
+        return false
+    end
+
+    function repo.listUtilityRates(weekId)
+        local map = {}
+        for _, row in pairs(state.utilityRates) do
+            if row.week_id == weekId then
+                map[row.bill_type] = row.amount
+            end
+        end
+        return map
+    end
+
+    function repo.saveUtilityRate(weekId, billType, amount, rolledAt)
+        local key = tostring(weekId) .. '\0' .. billType
+        if state.utilityRates[key] then
+            return false
+        end
+        state.utilityRates[key] = {
+            week_id = weekId,
+            bill_type = billType,
+            amount = amount,
+            rolled_at = rolledAt,
+        }
         return true
     end
 

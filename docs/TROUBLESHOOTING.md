@@ -3,7 +3,7 @@
 ## The resource stops during startup
 
 - `ambiguous_framework` or `ambiguous_inventory`: more than one supported resource is started. Set the config value explicitly.
-- `oxmysql` is missing: it is the only hard dependency. Start it first.
+- `oxmysql` or `PolyZone` is missing: both are hard dependencies. Start them first. Screenshot, banking, dispatch, and garage resources are optional.
 - A selected framework or inventory resource is not started: the adapter returns a not-started error and does not switch to standalone or to a fake inventory.
 - Property validation errors name the property id and the field (duplicate id, bad coordinates, shell model not in the allow-list).
 

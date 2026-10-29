@@ -9,6 +9,8 @@ export type PropertyCard = {
   rentalPrice: number
   rentalPeriodHours: number
   image: string
+  imageUrl?: string | null
+  zone?: { points: Array<{ x: number; y: number }>; minZ?: number; maxZ?: number } | null
   bedrooms: number
   bathrooms: number
   garages: number
@@ -117,6 +119,7 @@ export type Dashboard = {
   police: boolean
   admin: boolean
   rules?: { saleReturnPercent: number; minListingPrice: number }
+  utilities?: { weekId: number; rates: { water?: number; electricity?: number; garbage?: number } }
   warrants?: Array<Record<string, unknown>>
   raids?: Array<Record<string, unknown>>
   evidence?: Array<Record<string, unknown>>

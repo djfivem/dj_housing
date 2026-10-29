@@ -16,6 +16,8 @@ Checks that are always server-side:
 
 Proximity uses the server's last known player position and the routing bucket policy. Client coordinates are not accepted as proof the player is at the door.
 
+House image URLs are accepted only when the host is on the FiveManage allow-list. The API key is read from the `housing_fivemanage_key` convar on the server and is not sent to the NUI. A presigned upload URL is returned only to an owner or an admin.
+
 Money and SQL cannot commit together. The compensation path is: reservation, charge, grant, or refund and release. An uncertain money result is `needs_review`. The reconciler does not invent a second refund.
 
 Property archive does not delete inventory stash contents or evidence rows. Forcing an archive clears housing ownership, keys, and access records only.

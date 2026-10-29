@@ -9,6 +9,7 @@ local jsonColumns = {
     garage = 'garage_json',
     doors = 'doors_json',
     features = 'features_json',
+    zone = 'zone_json',
     scope_json = 'scope_json',
     officers_json = 'officers_json',
     detail_json = 'detail_json',
@@ -50,6 +51,7 @@ local function propertyFrom(row)
     row.garage = decode(row.garage_json)
     row.doors = decode(row.doors_json)
     row.features = decode(row.features_json)
+    row.zone = decode(row.zone_json)
     return row
 end
 
@@ -78,15 +80,16 @@ function Housing.MySqlRepository.new()
                 INSERT INTO housing_properties
                 (id, label, description, property_type, purchase_price, rental_price, rental_period_hours,
                  entrance_json, interior_json, shell_model, shell_options_json, ipls_json, image_key,
-                 bedrooms, bathrooms, garages, garage_json, doors_json, features_json, status,
+                 image_url, zone_json, bedrooms, bathrooms, garages, garage_json, doors_json, features_json, status,
                  reservation_token, listed, listing_price, enabled, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ]], {
                 row.id, row.label, row.description, row.property_type, row.purchase_price, row.rental_price,
                 row.rental_period_hours, encode(row.entrance), encode(row.interior), row.shell_model,
-                encode(row.shell_options), encode(row.ipls), row.image_key, row.bedrooms, row.bathrooms,
-                row.garages, encode(row.garage), encode(row.doors), encode(row.features), row.status,
-                row.reservation_token, row.listed or 0, row.listing_price, row.enabled or 1, row.created_at, row.updated_at,
+                encode(row.shell_options), encode(row.ipls), row.image_key, row.image_url, encode(row.zone),
+                row.bedrooms, row.bathrooms, row.garages, encode(row.garage), encode(row.doors), encode(row.features),
+                row.status, row.reservation_token, row.listed or 0, row.listing_price, row.enabled or 1,
+                row.created_at, row.updated_at,
             })
         end)
         return ok
@@ -95,9 +98,9 @@ function Housing.MySqlRepository.new()
     function repo.updateProperty(id, fields)
         local columns = {
             label = true, description = true, property_type = true, purchase_price = true, rental_price = true,
-            rental_period_hours = true, shell_model = true, image_key = true, bedrooms = true, bathrooms = true,
+            rental_period_hours = true, shell_model = true, image_key = true, image_url = true, bedrooms = true, bathrooms = true,
             garages = true, status = true, reservation_token = true, listed = true, listing_price = true, enabled = true,
-            entrance = true, interior = true, shell_options = true, ipls = true, garage = true, doors = true, features = true,
+            entrance = true, interior = true, shell_options = true, ipls = true, garage = true, doors = true, features = true, zone = true,
         }
         local sets, params = {}, {}
         for key, value in pairs(fields) do
@@ -376,8 +379,8 @@ function Housing.MySqlRepository.new()
 
     function repo.insertBill(row)
         local ok = pcall(function()
-            MySQL.insert.await('INSERT INTO housing_bills (id, property_id, bill_type, label, amount, status, due_at, paid_at, paid_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', {
-                row.id, row.property_id, row.bill_type, row.label, row.amount, row.status, row.due_at, row.paid_at, row.paid_by,
+            MySQL.insert.await('INSERT INTO housing_bills (id, property_id, bill_type, label, amount, status, due_at, paid_at, paid_by, week_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', {
+                row.id, row.property_id, row.bill_type, row.label, row.amount, row.status, row.due_at, row.paid_at, row.paid_by, row.week_id,
             })
         end)
         return ok
@@ -392,6 +395,31 @@ function Housing.MySqlRepository.new()
             return MySQL.query.await('SELECT * FROM housing_bills WHERE property_id = ? AND status = ?', { propertyId, status }) or {}
         end
         return MySQL.query.await('SELECT * FROM housing_bills WHERE property_id = ?', { propertyId }) or {}
+    end
+
+    function repo.hasBillForWeek(propertyId, billType, weekId)
+        local count = MySQL.scalar.await(
+            'SELECT COUNT(*) FROM housing_bills WHERE property_id = ? AND bill_type = ? AND week_id = ?',
+            { propertyId, billType, weekId }
+        )
+        return (tonumber(count) or 0) > 0
+    end
+
+    function repo.listUtilityRates(weekId)
+        local rows = MySQL.query.await('SELECT bill_type, amount FROM housing_utility_rates WHERE week_id = ?', { weekId }) or {}
+        local map = {}
+        for index = 1, #rows do
+            map[rows[index].bill_type] = rows[index].amount
+        end
+        return map
+    end
+
+    function repo.saveUtilityRate(weekId, billType, amount, rolledAt)
+        local changed = MySQL.update.await(
+            'INSERT IGNORE INTO housing_utility_rates (week_id, bill_type, amount, rolled_at) VALUES (?, ?, ?, ?)',
+            { weekId, billType, amount, rolledAt }
+        )
+        return (changed or 0) > 0
     end
 
     function repo.casBill(id, fromStatus, fields)

@@ -34,6 +34,7 @@ server_scripts {
     'server/domain/ratelimit.lua',
     'server/domain/auth.lua',
     'server/domain/money.lua',
+    'server/domain/utilities.lua',
     'server/domain/transaction.lua',
     'server/domain/rental.lua',
     'server/domain/keys.lua',
@@ -44,6 +45,9 @@ server_scripts {
     'server/domain/dashboard.lua',
     'server/adapters/framework.lua',
     'server/adapters/inventory.lua',
+    'server/adapters/images.lua',
+    'server/adapters/banking.lua',
+    'server/adapters/garages.lua',
     'server/adapters/integrations.lua',
     'server/runtime.lua',
     'server/callbacks.lua',
@@ -51,7 +55,9 @@ server_scripts {
 }
 
 client_scripts {
+    '@PolyZone/client.lua',
     'client/callbacks.lua',
+    'client/zones.lua',
     'client/interiors.lua',
     'client/furniture.lua',
     'client/garage.lua',
@@ -70,4 +76,5 @@ files {
 
 dependencies {
     'oxmysql',
+    'PolyZone',
 }

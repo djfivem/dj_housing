@@ -54,8 +54,12 @@ local function createBills(ctx, property)
                 due_at = ctx.now() + ((rate.intervalHours or 168) * 3600),
                 paid_at = nil,
                 paid_by = nil,
+                week_id = nil,
             })
         end
+    end
+    if Housing.Utilities then
+        Housing.Utilities.issueProperty(ctx, property)
     end
 end
 

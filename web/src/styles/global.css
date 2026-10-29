@@ -203,6 +203,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .person-row > div { flex: 1; min-width: 0; }
 .shell-card img { width: 92px; height: 56px; border-radius: 8px; object-fit: cover; }
 .grant { display: grid; grid-template-columns: 1.2fr 1fr 140px auto; gap: 10px; align-items: end; margin-top: 14px; }
+.rates { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.rates span { background: #12141c; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+.rates b { color: var(--text); margin-left: 6px; }
+.image-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.image-form input { flex: 1 1 180px; min-width: 0; }
 .empty { padding: 12px 0; }
 
 .desk {

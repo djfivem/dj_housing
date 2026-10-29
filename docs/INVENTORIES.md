@@ -2,7 +2,7 @@
 
 Only `server/adapters/inventory.lua` calls inventory exports. Every adapter sets `liveVerified = false` because this repository was not run against a live inventory.
 
-If `Housing.Config.Inventory` is `auto` and more than one of `ox_inventory`, `qs-inventory`, `ps-inventory`, `lj-inventory`, and `qb-inventory` is started, startup fails with `ambiguous_inventory`.
+If `Housing.Config.Inventory` is `auto` and more than one of `ox_inventory`, `qs-inventory`, `ps-inventory`, `lj-inventory`, `qb-inventory`, `origen_inventory`, and `codem-inventory` is started, startup fails with `ambiguous_inventory`. Detection order is ox, qs, ps, lj, qb, origen, then codem.
 
 Stash ids are `ah:{propertyId}:{stashKey}` for shared and restricted stashes, and `ah:{propertyId}:{stashKey}:{characterId}` for personal stashes. The client cannot choose that id.
 
@@ -40,6 +40,10 @@ Stashes are created with `CreateInventory` and opened with `OpenInventory`. Seiz
 ## qs-inventory
 
 Calls `AddItem`, `RemoveItem`, `RegisterStash(source, stashId, slots, maxWeight, label)`, `GetStashItems('Stash_' .. stashId)`, and `RemoveItemIntoStash`. The `Stash_` prefix is how qs-inventory names stored stashes. Confirm that prefix on your version before relying on inspection or seizure. Not live-verified.
+
+## origen_inventory and codem-inventory
+
+These use the same server item calls as the legacy adapters: `AddItem`, `RemoveItem`, and `GetItemsByName`. Stash open stays unsupported unless `LegacyStashOpen` is true, and that switch is still not a server-authoritative stash. `liveVerified` is false. They were not executed against those resources.
 
 ## lj-inventory and ps-inventory
 

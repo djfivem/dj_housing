@@ -75,6 +75,9 @@ function Housing.Client.setProperties(list)
             EndTextCommandSetBlipName(blip)
         end
     end
+    if Housing.Client.setZones then
+        Housing.Client.setZones(list)
+    end
 end
 
 CreateThread(function()

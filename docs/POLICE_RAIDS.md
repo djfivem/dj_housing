@@ -38,9 +38,9 @@ Seizure is a second callback. It re-checks the raid, warrant seizure flag, offic
 
 ## Optional integrations
 
-`config/housing.lua` integrations default to none.
+Door lock stays `none` until you set it. Dispatch defaults to `auto` and uses the first started resource.
 
 - Door lock preset `ox_doorlock` calls `setDoorState` when a raid becomes active and restores it when the raid ends. Other door resources need a custom function in the integrations adapter.
-- Dispatch preset `ps-dispatch` triggers a client event because `CustomAlert` is a client export. No server export is called for it.
+- Dispatch `auto` picks one of `ps-dispatch` (`CustomAlert` on the client), `cd_dispatch` (`cd_dispatch:AddNotification`), `qs-dispatch` (`qs-dispatch:server:CreateDispatchCall`), `rcore_dispatch` (`rcore_dispatch:server:sendAlert`), or `lb-tablet` (`AddDispatch`, wrapped in `pcall`). ps-dispatch builds after version 3 may want the job name `leo` before a blip appears. These calls were not executed here.
 - An external evidence resource can be attached as `ctx.evidenceExternal`. Housing still writes its own ledger.
 - Do not set an MDT warrant source unless that resource is installed. There is no second warrant authority in the default config.

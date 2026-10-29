@@ -251,6 +251,18 @@ handlers.adminRepair = function(source, payload)
     return Housing.Services.repairProperty(current, source, payload and payload.propertyId)
 end
 
+handlers.setPropertyImage = function(source, payload)
+    local current, blocked = playerReady(source)
+    if not current then return blocked end
+    return Housing.Services.setPropertyImage(current, source, payload)
+end
+
+handlers.prepareImageUpload = function(source, payload)
+    local current, blocked = playerReady(source)
+    if not current then return blocked end
+    return Housing.Services.prepareImageUpload(current, source, payload)
+end
+
 handlers.collectPayouts = function(source)
     local current, blocked = playerReady(source)
     if not current then return blocked end

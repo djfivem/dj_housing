@@ -12,12 +12,12 @@ All server-specific settings live under `config/`.
 | `evidence.lua` | Seizure on/off, item denylist, metadata retention |
 | `police.lua` | Jobs, grades, emergency entry, raid size, inspection mode |
 | `shells.lua` | Allow-listed shell models and door offsets |
-| `housing.lua` | Sale return percent, bills, furniture and upgrade catalogues, optional integrations |
+| `housing.lua` | Sale return percent, property tax, weekly water/power/garbage ranges, FiveManage hosts, PolyZone defaults, furniture, upgrades, optional integrations |
 | `properties.lua` | Example properties. With sync enabled, these fields refresh matching database rows on boot |
 
 `Housing.Config.Framework` is `auto`, `esx`, `qbcore`, `qbox`, or `standalone`.
 
-`Housing.Config.Inventory` is `auto`, `ox_inventory`, `qb_inventory`, `lj_inventory`, `ps_inventory`, `qs_inventory`, `custom`, or `none`.
+`Housing.Config.Inventory` is `auto`, `ox_inventory`, `qb_inventory`, `lj_inventory`, `ps_inventory`, `qs_inventory`, `origen_inventory`, `codem_inventory`, `custom`, or `none`.
 
 `Housing.Config.Interaction` is `target`, `key`, or `both`. Targeting uses `ox_target` when that resource is started, otherwise `qb-target` when that resource is started. With `key` or `both`, the client also draws a marker near entrances and listens for the interact key. The marker loop sleeps 1000 ms outside `markerDistance` and uses `Wait(0)` only while a marker is actually drawn.
 

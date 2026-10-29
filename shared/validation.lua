@@ -177,6 +177,8 @@ function Validation.propertyDefinition(definition, shells)
             return invalid('stash_type')
         end
     end
+    local zoneOk, zone = Validation.zone(definition.zone)
+    if not zoneOk then return invalid('zone') end
     return true, {
         id = id,
         label = label,
@@ -197,7 +199,57 @@ function Validation.propertyDefinition(definition, shells)
         garage = garage,
         stashes = stashes,
         features = definition.features or {},
+        zone = zone,
     }
+end
+
+function Validation.zone(value)
+    if value == nil then
+        return true, nil
+    end
+    if type(value) ~= 'table' or type(value.points) ~= 'table' or #value.points < 3 or #value.points > 64 then
+        return invalid('zone')
+    end
+    local points = {}
+    for index = 1, #value.points do
+        local point = value.points[index]
+        if type(point) ~= 'table' or not Util.isFiniteNumber(point.x) or not Util.isFiniteNumber(point.y) then
+            return invalid('zone')
+        end
+        points[index] = { x = point.x + 0.0, y = point.y + 0.0 }
+    end
+    if value.minZ ~= nil and not Util.isFiniteNumber(value.minZ) then
+        return invalid('zone')
+    end
+    if value.maxZ ~= nil and not Util.isFiniteNumber(value.maxZ) then
+        return invalid('zone')
+    end
+    if value.minZ ~= nil and value.maxZ ~= nil and value.maxZ < value.minZ then
+        return invalid('zone')
+    end
+    return true, { points = points, minZ = value.minZ, maxZ = value.maxZ }
+end
+
+function Validation.imageUrl(value, hosts)
+    if type(value) ~= 'string' or #value < 12 or #value > 512 or not value:match('^https://') then
+        return invalid('image')
+    end
+    local host = value:match('^https://([^/%?#]+)')
+    if not host then
+        return invalid('image')
+    end
+    host = host:lower()
+    local allowed = false
+    for index = 1, #(hosts or {}) do
+        local rule = tostring(hosts[index]):lower()
+        if host == rule or host:sub(-(#rule + 1)) == '.' .. rule then
+            allowed = true
+        end
+    end
+    if not allowed then
+        return invalid('image_host')
+    end
+    return true, value
 end
 
 function Validation.purchaseRequest(request)

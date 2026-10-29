@@ -11,6 +11,9 @@ NUI callbacks are forwarded by `client/nui.lua` to the server allow-list. Send J
 | `unlist` | `propertyId` |
 | `enter`, `exit` | `propertyId` on enter |
 | `payBill` | `billId` |
+| `setPropertyImage` | `propertyId`, `imageUrl` (`https` on an allowed FiveManage host) |
+| `prepareImageUpload` | `propertyId`. Returns a presigned URL for the owner or an admin. The API key is not included. |
+| `captureImage` | Client only. Uses `screenshot-basic` after `prepareImageUpload`, then calls `setPropertyImage`. |
 | `payAll` | `propertyId` |
 | `buyFurniture` | `propertyId`, `catalogId`, `idempotencyKey` |
 | `placeFurniture` | `furnitureId`, placement coordinates |
@@ -36,7 +39,7 @@ NUI callbacks are forwarded by `client/nui.lua` to the server allow-list. Send J
 | `adminRepair` | `propertyId` |
 | `collectPayouts` | none |
 
-Server exports are not registered globally. Other resources should not call inventory or framework exports through housing. To add a framework or inventory, implement the adapter table and register it in the detector.
+Server exports: `HasGarageAccess(source, propertyId)` and `GetPropertyGarages()`. Other resources should not call inventory or framework exports through housing. To add a framework or inventory, implement the adapter table and register it in the detector.
 
 ## Custom inventory contract
 
@@ -48,4 +51,4 @@ Set `Housing.Config.Notification = 'custom'` and `Housing.Config.CustomNotifyEve
 
 ## Door, garage, dispatch, evidence
 
-`config/housing.lua` `integrations` selects a preset name or `none`. Unknown names are reported and not called. A custom door or evidence hook is a function assigned on the server context in `server/adapters/integrations.lua`. Keep that code out of the purchase and raid services.
+`config/housing.lua` `integrations` selects a preset name, `auto`, or `none`. Unknown names are reported and not called. A custom door or evidence hook is a function assigned on the server context in `server/adapters/integrations.lua`. Keep that code out of the purchase and raid services. Banking records a player statement after the framework has already moved the money. Garage registration uses the published house APIs named in `docs/HOUSING.md`.

@@ -39,6 +39,17 @@ Housing.Config.Properties = {
             stash('restricted', 'Owner Safe', 'restricted', 'owner', 20, 50000),
         },
         features = { pool = true, view = true },
+        -- Starting lot outline. It is not a surveyed property line. Replace the points with /pzcreate.
+        zone = {
+            points = {
+                { x = -195.0, y = 480.0 },
+                { x = -150.0, y = 480.0 },
+                { x = -150.0, y = 520.0 },
+                { x = -195.0, y = 520.0 },
+            },
+            minZ = 130.0,
+            maxZ = 155.0,
+        },
     },
     {
         id = 'del_perro_apartment',
@@ -61,6 +72,16 @@ Housing.Config.Properties = {
             stash('personal', 'Personal Locker', 'personal', 'resident', 20, 40000),
         },
         features = { city = true },
+        zone = {
+            points = {
+                { x = -800.0, y = 290.0 },
+                { x = -750.0, y = 290.0 },
+                { x = -750.0, y = 335.0 },
+                { x = -800.0, y = 335.0 },
+            },
+            minZ = 75.0,
+            maxZ = 100.0,
+        },
     },
     {
         id = 'sandy_shores_trailer',
@@ -82,6 +103,16 @@ Housing.Config.Properties = {
             stash('shared', 'Trailer Storage', 'shared', 'resident', 25, 60000),
         },
         features = { rural = true },
+        zone = {
+            points = {
+                { x = 1955.0, y = 3800.0 },
+                { x = 1995.0, y = 3800.0 },
+                { x = 1995.0, y = 3840.0 },
+                { x = 1955.0, y = 3840.0 },
+            },
+            minZ = 25.0,
+            maxZ = 45.0,
+        },
     },
     {
         id = 'mirror_park_house',
@@ -105,5 +136,15 @@ Housing.Config.Properties = {
             stash('restricted', 'Owner Safe', 'restricted', 'coowner', 15, 40000),
         },
         features = { yard = true },
+        zone = {
+            points = {
+                { x = 1210.0, y = -745.0 },
+                { x = 1250.0, y = -745.0 },
+                { x = 1250.0, y = -705.0 },
+                { x = 1210.0, y = -705.0 },
+            },
+            minZ = 50.0,
+            maxZ = 75.0,
+        },
     },
 }

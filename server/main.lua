@@ -46,6 +46,9 @@ local function boot()
             end
         end
     end
+    if context.garages and context.garages.registerAll then
+        context.garages.registerAll()
+    end
     Housing.Runtime.report = report
 end
 
@@ -68,6 +71,22 @@ if not booted then
         end
         local result = Housing.Callbacks.dispatch(source, name, payload)
         TriggerClientEvent('advanced_housing:response', source, requestId, result)
+    end)
+
+    RegisterNetEvent('advanced_housing:requestGarages', function()
+        local source = source
+        local context = Housing.Runtime.context
+        if context and context.garages and context.garages.registerFor then
+            context.garages.registerFor(source)
+        end
+    end)
+
+    exports('HasGarageAccess', function(source, propertyId)
+        return Housing.Garages.hasAccess(source, propertyId)
+    end)
+
+    exports('GetPropertyGarages', function()
+        return Housing.Garages.list()
     end)
 
     RegisterNetEvent('advanced_housing:confirmExitFailed', function()

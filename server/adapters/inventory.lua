@@ -11,6 +11,8 @@ function Inventories.detect(config, env)
         { id = 'ps_inventory', resource = 'ps-inventory' },
         { id = 'lj_inventory', resource = 'lj-inventory' },
         { id = 'qb_inventory', resource = 'qb-inventory' },
+        { id = 'origen_inventory', resource = 'origen_inventory' },
+        { id = 'codem_inventory', resource = 'codem-inventory' },
     }
     if mode == 'none' or mode == 'custom' then
         return mode
@@ -291,6 +293,14 @@ function Inventories.ps(config, env)
     return legacy('ps_inventory', 'ps-inventory', config, env)
 end
 
+function Inventories.origen(config, env)
+    return legacy('origen_inventory', 'origen_inventory', config, env)
+end
+
+function Inventories.codem(config, env)
+    return legacy('codem_inventory', 'codem-inventory', config, env)
+end
+
 function Inventories.qs(config, env)
     if env.getResourceState('qs-inventory') ~= 'started' then
         return unavailable('qs_inventory', 'qs-inventory is not started')
@@ -444,6 +454,8 @@ function Inventories.create(config, env)
     if mode == 'lj_inventory' then return Inventories.lj(config, env) end
     if mode == 'ps_inventory' then return Inventories.ps(config, env) end
     if mode == 'qs_inventory' then return Inventories.qs(config, env) end
+    if mode == 'origen_inventory' then return Inventories.origen(config, env) end
+    if mode == 'codem_inventory' then return Inventories.codem(config, env) end
     if mode == 'custom' then return Inventories.custom(config, env) end
     return nil, 'unknown_inventory'
 end

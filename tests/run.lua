@@ -27,6 +27,7 @@ load('server/repository_memory.lua')
 load('server/domain/ratelimit.lua')
 load('server/domain/auth.lua')
 load('server/domain/money.lua')
+load('server/domain/utilities.lua')
 load('server/domain/transaction.lua')
 load('server/domain/rental.lua')
 load('server/domain/keys.lua')
@@ -37,6 +38,10 @@ load('server/domain/reconcile.lua')
 load('server/domain/dashboard.lua')
 load('server/adapters/framework.lua')
 load('server/adapters/inventory.lua')
+load('server/adapters/images.lua')
+load('server/adapters/banking.lua')
+load('server/adapters/garages.lua')
+load('server/adapters/integrations.lua')
 
 local passed = 0
 local failed = 0
@@ -161,6 +166,7 @@ local function makeCtx()
             upgrades = Housing.Config.Upgrades,
             performance = Housing.Config.Performance,
             keyItem = Housing.Config.KeyItem,
+            images = Housing.Config.Images,
             reservationTimeoutSeconds = 180,
         },
         rateLimiter = Housing.RateLimiter.new({
@@ -174,6 +180,9 @@ local function makeCtx()
         }, clock),
         now = clock,
         ids = ids,
+        randomInt = function(min)
+            return min
+        end,
         lockCharacter = function(id)
             if locks[id] then return false end
             locks[id] = true
@@ -193,6 +202,7 @@ end
 
 local ctx, syncReport = makeCtx()
 check('definitions load', syncReport.inserted == 4 and #syncReport.errors == 0)
+check('zone synced', ctx.repo.getProperty('vinewood_hills_mansion').zone and #ctx.repo.getProperty('vinewood_hills_mansion').zone.points >= 3)
 local again = Housing.Services.syncDefinitions(ctx, Housing.Config.Properties)
 check('definitions do not duplicate', again.inserted == 0 and again.updated == 4)
 
@@ -438,6 +448,138 @@ check('raid transition guard', Housing.CanTransitionRaid('requested', 'active') 
 check('raid authorise transition', Housing.CanTransitionRaid('requested', 'authorised') == true)
 check('bucket stable', Housing.Util.bucketFor('vinewood_hills_mansion') == Housing.Util.bucketFor('vinewood_hills_mansion'))
 check('bucket not zero', Housing.Util.bucketFor('vinewood_hills_mansion') > 0)
+
+check('zone needs three points', select(1, Housing.Validation.zone({ points = { { x = 0, y = 0 }, { x = 1, y = 1 } } })) == false)
+local badZone = Housing.Util.deepCopy(Housing.Config.Properties[1])
+badZone.id = 'bad_zone_house'
+badZone.zone = { points = { { x = 1, y = 1 } } }
+local zoneReport = Housing.Services.syncDefinitions(ctx, { badZone })
+check('short zone rejected', zoneReport.errors[1] and zoneReport.errors[1].error == 'zone')
+check('image host rejected', select(1, Housing.Validation.imageUrl('https://evil.example/house.jpg', Housing.Config.Images.allowedHosts)) == false)
+check('image host accepted', select(1, Housing.Validation.imageUrl('https://r2.fivemanage.com/images/house.jpg', Housing.Config.Images.allowedHosts)) == true)
+local savedImage = Housing.Services.setPropertyImage(ctx, 1, {
+    propertyId = 'vinewood_hills_mansion',
+    imageUrl = 'https://r2.fivemanage.com/images/house.jpg',
+})
+check('owner can save a house image', savedImage.ok == true)
+local strangerImage = Housing.Services.setPropertyImage(ctx, 2, {
+    propertyId = 'vinewood_hills_mansion',
+    imageUrl = 'https://r2.fivemanage.com/images/other.jpg',
+})
+check('stranger cannot set a house image', strangerImage.ok == false and strangerImage.error == 'not_authorised')
+Housing.Services.syncDefinitions(ctx, Housing.Config.Properties)
+check('sync keeps a player image', ctx.repo.getProperty('vinewood_hills_mansion').image_url == 'https://r2.fivemanage.com/images/house.jpg')
+
+local utilityBills = {}
+for _, bill in ipairs(ctx.repo.listBills('vinewood_hills_mansion')) do
+    utilityBills[bill.bill_type] = bill.amount
+end
+check('weekly utility bills use the rolled minimum', utilityBills.water == 75 and utilityBills.electricity == 90 and utilityBills.garbage == 40)
+local beforeUtilityCount = #ctx.repo.listBills('vinewood_hills_mansion')
+local duplicateUtilities = Housing.Utilities.issueProperty(ctx, { id = 'vinewood_hills_mansion' })
+check('the same week is not billed twice', duplicateUtilities == 0 and #ctx.repo.listBills('vinewood_hills_mansion') == beforeUtilityCount)
+
+local frozen = 1700000000
+local sequence = { 111, 142, 88, 201, 233, 77 }
+local cursor = 0
+local utilityCtx = {
+    repo = Housing.MemoryRepository.new(function() return frozen end),
+    config = { housing = Housing.Config.Housing },
+    now = function() return frozen end,
+    ids = ids,
+    randomInt = function()
+        cursor = cursor + 1
+        return sequence[cursor]
+    end,
+}
+local rates, week = Housing.Utilities.current(utilityCtx)
+check('utility week id', week == math.floor(1700000000 / (168 * 3600)))
+check('rates roll in sorted type order', rates.electricity == 111 and rates.garbage == 142 and rates.water == 88)
+local stable = Housing.Utilities.current(utilityCtx)
+check('the same week keeps its rates', stable.electricity == 111 and stable.garbage == 142 and stable.water == 88 and cursor == 3)
+frozen = frozen + (168 * 3600)
+local nextRates = Housing.Utilities.current(utilityCtx)
+check('the next week rolls new rates', nextRates.electricity == 201 and nextRates.garbage == 233 and nextRates.water == 77 and cursor == 6)
+
+local presigned = Housing.Images.presign({
+    config = { images = Housing.Config.Images },
+    env = {
+        getConvar = function() return 'server-key' end,
+        http = function(_, _, headers)
+            if headers.Authorization ~= 'server-key' then return 401, '' end
+            return 200, '{"data":{"presignedUrl":"https://fmapi.net/api/presigned/abc"}}'
+        end,
+    },
+})
+check('fivemanage presign stays on the server', presigned == 'https://fmapi.net/api/presigned/abc')
+local missingKey = Housing.Images.presign({
+    config = { images = Housing.Config.Images },
+    env = { getConvar = function() return '' end, http = function() return 200, '{}' end },
+})
+check('presign refuses a missing key', missingKey == nil)
+
+local statements = {}
+local banking = Housing.Banking.bind({
+    Account = 'bank',
+    Integrations = { banking = { system = 'qb-banking' } },
+}, {
+    getResourceState = function(name) return name == 'qb-banking' and 'started' or 'missing' end,
+    exports = {
+        ['qb-banking'] = {
+            CreateBankStatement = function(source, account, amount, _, kind, accountType)
+                statements[#statements + 1] = { source = source, account = account, amount = amount, kind = kind, accountType = accountType }
+                return true
+            end,
+        },
+    },
+})
+banking.record(7, { characterId = 'cid', name = 'Diesel' }, { label = 'Water', amount = 100, bill_type = 'water' })
+check('banking writes a statement', statements[1] and statements[1].source == 7 and statements[1].amount == 100 and statements[1].kind == 'withdraw' and statements[1].accountType == 'player')
+
+local registered = {}
+Housing.Runtime = Housing.Runtime or {}
+Housing.Runtime.context = ctx
+local garageAdapter = Housing.Garages.bind({
+    Integrations = { garage = { system = 'jg-advancedgarages' } },
+}, {
+    getResourceState = function(name) return name == 'jg-advancedgarages' and 'started' or 'missing' end,
+    exports = {
+        ['jg-advancedgarages'] = {
+            registerGarage = function(payload)
+                registered[#registered + 1] = payload
+            end,
+        },
+    },
+})
+garageAdapter.registerAll()
+local ownerGarage = false
+for index = 1, #registered do
+    if registered[index].id == 'housing_vinewood_hills_mansion' and registered[index].access(1) == true then
+        ownerGarage = type(registered[index].coords) == 'table'
+    end
+end
+check('jg garage uses housing access', #registered == 4 and ownerGarage)
+local keyGarage = Housing.Garages.bind({
+    Integrations = { garage = { system = 'cd_garage' } },
+}, { getResourceState = function() return 'started' end })
+check('cd_garage is not treated as a house registrar', keyGarage.name == 'builtin')
+
+local dispatched = {}
+local dispatchAdapter = Housing.Integrations.bind(Housing.Config, {
+    getResourceState = function(name) return name == 'cd_dispatch' and 'started' or 'missing' end,
+    triggerClient = function(_, _, payload, system)
+        dispatched[#dispatched + 1] = { system = system, jobs = payload.jobs }
+    end,
+    triggerEvent = function() end,
+    exports = {},
+})
+dispatchAdapter.dispatch({ message = 'Raid', coords = { x = 1, y = 2, z = 3 }, propertyId = 'vinewood_hills_mansion' })
+check('one dispatch system is selected', dispatched[1] and dispatched[1].system == 'cd_dispatch' and dispatched[1].jobs[1] == 'police')
+
+local origenEnv = { getResourceState = function(name) return name == 'origen_inventory' and 'started' or 'missing' end }
+check('origen inventory detected', Housing.Inventories.detect(Housing.Config, origenEnv) == 'origen_inventory')
+local codemEnv = { getResourceState = function(name) return name == 'codem-inventory' and 'started' or 'missing' end }
+check('codem inventory detected', Housing.Inventories.detect(Housing.Config, codemEnv) == 'codem_inventory')
 
 print(string.format('RESULT %d passed, %d failed', passed, failed))
 if failed > 0 then

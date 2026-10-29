@@ -34,4 +34,6 @@ Character id is the player's license identifier. Money is a row in `housing_bala
 
 ## Not verified on a live server
 
+Bill payments call these money functions. A started banking resource only receives a statement after that call succeeds. Society `AddMoney` / `RemoveMoney` exports are not used for player bills.
+
 These adapters follow the published exports of each framework. This repository's tests call them with an in-memory environment. They have not been executed inside a running FiveM server. `liveVerified` is not set on the framework adapters.

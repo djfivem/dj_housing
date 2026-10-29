@@ -39,14 +39,20 @@ Stash access checks the player, the property, the stash row, the role, proximity
 
 ## Garages, furniture, bills
 
-The built-in garage stores a plate and model hash on the property. It is not qb-garages. Spawn and store are server callbacks. Vehicle mods are not persisted.
+The built-in garage stores a plate and model hash on the property. Spawn and store are server callbacks. Vehicle mods are not persisted.
+
+When `integrations.garage.system` is `auto`, the server registers locations with the first started resource that publishes a house-garage API: `jg-advancedgarages` (`registerGarage`, with an access callback that uses housing access), then `qb-garages` (`qb-garages:client:addHouseGarage`, location only). `qs-advancedgarages` `CreateGarage` is used only when that system is selected explicitly, because the published example has no housing access callback. `cd_garage` and `okokGarage` are vehicle-key systems and are not called. The client asks the server to register again after join, because `playerJoining` is too early. `HasGarageAccess` and `GetPropertyGarages` are server exports. None of these calls were executed against a live garage resource.
 
 Furniture purchases create a row. Placement is a separate callback (`placeFurniture`) validated against the property interior. The NUI buy button purchases the catalogue item. Placement is performed from the client interior flow.
 
-Bills are generated from `config/housing.lua` rates. Pay one or pay all from the Bills panel. Payment is server-authoritative.
+Property tax still uses `billRates`. Water, power, and garbage are city-wide weekly rates in `utilities`. The server rolls one amount per type per week, stores it in `housing_utility_rates`, and bills every occupied property that week. The same week is not billed twice. Paying a bill removes money through the framework. If Renewed-Banking, qb-banking, or okokBanking is started, housing then asks that resource to write a statement. It does not call their society money exports. A statement failure does not refund the bill.
 
 ## NUI
 
 `/housing` opens a centered management window. The sidebar groups My House, furniture, bills, keys, permissions, upgrades, garage, storage, and the marketplace. Accent color is orange (`#ff7a18`) on a near-black panel. Escape closes a dialog first, then the window, and both Escape and the close control release NUI focus. The client also clears focus on resource stop. Purchase and rental buttons send one idempotency key per confirmation dialog, and the UI ignores a second click while a request is in flight.
 
-Property photos are original images bundled in `web/dist/assets`. They are not loaded from a remote host.
+Property photos start as the bundled images. An owner can paste an `https` URL on `r2.fivemanage.com`, `fivemanage.com`, or `fmapi.net`, or capture one when `screenshot-basic` is started. The capture path asks the server for a FiveManage presigned URL. The API key never goes to the client. A definition sync does not clear a saved `image_url`.
+
+## Property lines
+
+`PolyZone` is required. Each property can set `zone.points` (at least three), `minZ`, and `maxZ`. The example polygons in `config/properties.lua` are starting rectangles around the entrances. They are not surveyed lot lines. A property with no polygon gets a square of `Zones.defaultSize` (24) around the entrance. Entering the polygon notifies the player once. Those zones were not drawn in a live game.

@@ -14,7 +14,7 @@ Result:
 RESULT 58 passed, 0 failed
 ```
 
-The same run's checks cover property loading, duplicate ids, purchase debit and replay, price mismatch, insufficient funds, a second concurrent buyer losing, shell allow-list rejection, grant compensation, rental expiry, forged key metadata, guest keys isolated per property, revocation, stash authorisation, unknown and cross-property stashes, warrant self-approval, raid authorise-then-active, inspection, unrelated property search, seizure plus an idempotent retry, framework ambiguity, standalone admin denial and no overdraft, inventory ambiguity, rate limiting, and stable routing buckets.
+The same run's checks cover property loading, duplicate ids, purchase debit and replay, price mismatch, insufficient funds, a second concurrent buyer losing, shell allow-list rejection, grant compensation, rental expiry, forged key metadata, guest keys isolated per property, revocation, stash authorisation, unknown and cross-property stashes, warrant self-approval, raid authorise-then-active, inspection, unrelated property search, seizure plus an idempotent retry, framework ambiguity, standalone admin denial and no overdraft, inventory ambiguity, rate limiting, stable routing buckets, lot polygons, weekly utility rolls, image hosts, a FiveManage presign stand-in, a qb-banking statement stand-in, jg garage registration, and origen/codem detection. The latest run was 80 passed, 0 failed.
 
 Syntax:
 
@@ -38,7 +38,7 @@ These UI checks drive the dev mock of the callback contract. They do not execute
 
 ## Not executed
 
-No FiveM server, oxmysql, ESX, QBCore, Qbox, ox_inventory, qb-inventory, lj-inventory, ps-inventory, qs-inventory, ox_target, qb-target, ox_doorlock, or ps-dispatch is installed here. Adapters are coded against published exports and marked `liveVerified = false`. Passing the unit file does not verify a live inventory or a streamed shell.
+No FiveM server, oxmysql, PolyZone, ESX, QBCore, Qbox, inventory, banking, dispatch, or garage resource is installed here. Adapters are coded against published exports and marked `liveVerified = false`. Passing the unit file does not verify a live inventory, a streamed shell, a drawn polygon, or a FiveManage upload.
 
 Shell door offsets and the example entrance coordinates have not been walked in-game.
 

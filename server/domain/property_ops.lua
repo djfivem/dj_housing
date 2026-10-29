@@ -63,6 +63,7 @@ function Services.syncDefinitions(ctx, definitions)
                 shell_options = normalized.shellOptions,
                 ipls = normalized.ipls,
                 image_key = normalized.image,
+                zone = normalized.zone,
                 bedrooms = normalized.bedrooms,
                 bathrooms = normalized.bathrooms,
                 garages = normalized.garages,
@@ -95,6 +96,7 @@ function Services.syncDefinitions(ctx, definitions)
                     shell_options = row.shell_options,
                     ipls = row.ipls,
                     image_key = row.image_key,
+                    zone = row.zone,
                     bedrooms = row.bedrooms,
                     bathrooms = row.bathrooms,
                     garages = row.garages,
@@ -215,6 +217,11 @@ function Services.payBill(ctx, source, raw)
         ctx.framework.addMoney(source, ctx.config.account, bill.amount, 'housing_bill_refund:' .. bill.id)
         return finish(Util.fail('not_found'))
     end
+    if ctx.banking and ctx.banking.record then
+        pcall(function()
+            ctx.banking.record(source, player, bill)
+        end)
+    end
     Auth.audit(ctx, {
         category = 'bill',
         action_name = 'paid',
@@ -225,6 +232,62 @@ function Services.payBill(ctx, source, raw)
         detail_json = { amount = bill.amount },
     })
     return finish(Util.ok({ billId = bill.id, amount = bill.amount }))
+end
+
+function Services.setPropertyImage(ctx, source, raw)
+    if type(raw) ~= 'table' then
+        return Util.fail('invalid_payload')
+    end
+    local idOk, propertyId = Validation.identifier(raw.propertyId or '')
+    if not idOk then
+        return Util.fail('invalid_payload')
+    end
+    local hosts = ctx.config.images and ctx.config.images.allowedHosts or {}
+    local urlOk, imageUrl = Validation.imageUrl(raw.imageUrl, hosts)
+    if not urlOk then
+        return Util.fail(imageUrl)
+    end
+    local player = ctx.framework.getPlayer(source)
+    if not player then
+        return Util.fail('player_not_found')
+    end
+    local property = ctx.repo.getProperty(propertyId)
+    if not property then
+        return Util.fail('property_not_found')
+    end
+    local role = Auth.resolveRole(ctx, player, propertyId)
+    if role ~= 'owner' and not (ctx.isAdmin and ctx.isAdmin(source)) then
+        return Util.fail('not_authorised')
+    end
+    ctx.repo.updateProperty(propertyId, { image_url = imageUrl })
+    return Util.ok({ propertyId = propertyId, imageUrl = imageUrl })
+end
+
+function Services.prepareImageUpload(ctx, source, raw)
+    if type(raw) ~= 'table' then
+        return Util.fail('invalid_payload')
+    end
+    local idOk, propertyId = Validation.identifier(raw.propertyId or '')
+    if not idOk then
+        return Util.fail('invalid_payload')
+    end
+    local player = ctx.framework.getPlayer(source)
+    if not player then
+        return Util.fail('player_not_found')
+    end
+    local property = ctx.repo.getProperty(propertyId)
+    if not property then
+        return Util.fail('property_not_found')
+    end
+    local role = Auth.resolveRole(ctx, player, propertyId)
+    if role ~= 'owner' and not (ctx.isAdmin and ctx.isAdmin(source)) then
+        return Util.fail('not_authorised')
+    end
+    local url, err = Housing.Images.presign(ctx)
+    if not url then
+        return Util.fail(err or 'image_unavailable')
+    end
+    return Util.ok({ url = url })
 end
 
 function Services.payAllBills(ctx, source, propertyId)
@@ -603,6 +666,9 @@ function Services.createBillCycle(ctx)
                 end
             end
         end
+    end
+    if Housing.Utilities then
+        created = created + Housing.Utilities.issueAll(ctx)
     end
     return created
 end

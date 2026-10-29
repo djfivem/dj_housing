@@ -9,6 +9,17 @@ local function liveEnv()
         getPlayerName = GetPlayerName,
         triggerClient = TriggerClientEvent,
         triggerEvent = TriggerEvent,
+        getConvar = function(name, default)
+            return GetConvar(name, default or '')
+        end,
+        http = function(method, url, headers)
+            local request = promise.new()
+            PerformHttpRequest(url, function(status, body)
+                request:resolve({ status = status, body = body })
+            end, method or 'GET', '', headers or {})
+            local result = Citizen.Await(request)
+            return result.status, result.body
+        end,
         findSourceByIdentifier = function(identifier)
             local players = GetPlayers()
             for index = 1, #players do
@@ -27,6 +38,10 @@ function Housing.Runtime.build(repo)
     local framework, frameworkErr, frameworkExtra = Housing.Frameworks.create(Housing.Config, env, repo)
     local inventory, inventoryErr, inventoryExtra = Housing.Inventories.create(Housing.Config, env)
     local integrations = Housing.Integrations.bind(Housing.Config, env)
+    local banking = Housing.Banking.bind(Housing.Config, env)
+    local garages = Housing.Garages.bind(Housing.Config, env)
+    integrations.report.banking = banking.report
+    integrations.report.garage = garages.report
     local locks = {}
     local instances = {}
     local ids = {}
@@ -72,6 +87,7 @@ function Housing.Runtime.build(repo)
             account = Housing.Config.Account,
             permissions = Housing.Config.Permissions,
             housing = Housing.Config.Housing,
+            images = Housing.Config.Images,
             police = Housing.Config.Police,
             evidence = Housing.Config.Evidence,
             shells = Housing.Config.Shells,
@@ -84,6 +100,11 @@ function Housing.Runtime.build(repo)
         rateLimiter = Housing.RateLimiter.new(Housing.Config.RateLimits, os.time),
         now = os.time,
         ids = nextId,
+        randomInt = function(min, max)
+            return math.random(min, max)
+        end,
+        env = env,
+        banking = banking,
         lockCharacter = function(id)
             if locks[id] then return false end
             locks[id] = true
@@ -127,7 +148,9 @@ function Housing.Runtime.build(repo)
         evidenceExternal = integrations.evidenceExternal,
         instances = instances,
         integrations = integrations.report,
+        garages = garages,
     }
+    Housing.Runtime.garages = garages
     function ctx.setInstance(source, data, returnCoords)
         if data.bucket and data.bucket > 0 then
             SetPlayerRoutingBucket(source, data.bucket)

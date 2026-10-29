@@ -39,6 +39,7 @@ local forwarded = {
     'revokeKey', 'transferKey', 'revokePropertyKeys', 'recoverKey', 'requestWarrant',
     'decideWarrant', 'openRaid', 'setRaidState', 'inspectStash', 'seize', 'transferEvidence',
     'adminEnable', 'adminArchive', 'adminTransfer', 'adminRepair', 'collectPayouts',
+    'setPropertyImage', 'prepareImageUpload',
 }
 
 for index = 1, #forwarded do
@@ -67,6 +68,32 @@ for index = 1, #forwarded do
         end)
     end)
 end
+
+RegisterNUICallback('captureImage', function(data, cb)
+    Housing.Client.callback('prepareImageUpload', data or {}, function(prepared)
+        if not prepared or not prepared.ok or not prepared.data or type(prepared.data.url) ~= 'string' then
+            cb(prepared or { ok = false, error = 'image_unavailable' })
+            return
+        end
+        if GetResourceState('screenshot-basic') ~= 'started' then
+            cb({ ok = false, error = 'screenshot_unavailable' })
+            return
+        end
+        exports['screenshot-basic']:requestScreenshotUpload(prepared.data.url, 'file', function(body)
+            local url = type(body) == 'string' and body:match('"url"%s*:%s*"(https://[^"]+)"') or nil
+            if not url then
+                cb({ ok = false, error = 'image_unavailable' })
+                return
+            end
+            Housing.Client.callback('setPropertyImage', {
+                propertyId = data and data.propertyId,
+                imageUrl = url,
+            }, function(saved)
+                cb(saved or { ok = false, error = 'image_unavailable' })
+            end)
+        end)
+    end)
+end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end

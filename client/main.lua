@@ -6,6 +6,7 @@ CreateThread(function()
     Housing.Client.callback('dashboard', {}, function(result)
         if result and result.ok then
             Housing.Client.setProperties(result.data.properties)
+            TriggerServerEvent('advanced_housing:requestGarages')
         end
     end)
 end)

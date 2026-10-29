@@ -95,7 +95,8 @@ let balance = 482750
 let bills = [
   { id: 'bill-tax', property_id: 'vinewood_hills_mansion', bill_type: 'property_tax', label: 'Property Tax', amount: 1250, status: 'due', due_at: now + 86400 },
   { id: 'bill-water', property_id: 'vinewood_hills_mansion', bill_type: 'water', label: 'Water Bill', amount: 150, status: 'due', due_at: now + 2 * 86400 },
-  { id: 'bill-power', property_id: 'vinewood_hills_mansion', bill_type: 'electricity', label: 'Electricity Bill', amount: 220, status: 'due', due_at: now + 5 * 86400 },
+  { id: 'bill-power', property_id: 'vinewood_hills_mansion', bill_type: 'electricity', label: 'Power', amount: 220, status: 'due', due_at: now + 5 * 86400 },
+  { id: 'bill-garbage', property_id: 'vinewood_hills_mansion', bill_type: 'garbage', label: 'Garbage', amount: 90, status: 'due', due_at: now + 5 * 86400 },
   { id: 'bill-rent', property_id: 'del_perro_apartment', bill_type: 'rent', label: 'Rent', amount: 750, status: 'due', due_at: now + 8 * 86400 },
 ]
 const upgrades = new Set<string>()
@@ -176,6 +177,7 @@ function dashboard(propertyId?: string): Dashboard {
     police: deskMode() === 'police' || deskMode() === 'both',
     admin: deskMode() === 'admin' || deskMode() === 'both',
     rules: { saleReturnPercent: 60, minListingPrice: 1000 },
+    utilities: { weekId: 2810, rates: { water: 150, electricity: 220, garbage: 90 } },
     warrants: deskMode() === 'police' || deskMode() === 'both' ? warrants : [],
     raids: deskMode() === 'police' || deskMode() === 'both' ? raids : [],
     evidence: deskMode() === 'police' || deskMode() === 'both' ? evidence : [],
@@ -407,6 +409,24 @@ export async function handle(event: string, data?: unknown) {
     if (event === 'storeVehicle' && vehicle.state !== 'out') return fail('not_out')
     vehicle.state = event === 'takeVehicle' ? 'out' : 'stored'
     return { ok: true, data: { vehicleId: vehicle.id, plate: vehicle.plate, modelHash: vehicle.model_hash, state: vehicle.state } }
+  }
+  if (event === 'setPropertyImage') {
+    const url = String(payload.imageUrl ?? '')
+    const allowed = url.startsWith('https://r2.fivemanage.com/') || url.startsWith('https://fivemanage.com/') || url.startsWith('https://fmapi.net/') || url.includes('.fivemanage.com/')
+    if (!allowed) return fail('image_host')
+    const property = properties.find((item) => item.id === payload.propertyId)
+    if (!property || (property.role !== 'owner' && deskMode() !== 'admin' && deskMode() !== 'both')) return fail('not_authorised')
+    property.image = url
+    return { ok: true, data: { imageUrl: url } }
+  }
+  if (event === 'prepareImageUpload') {
+    return { ok: true, data: { url: 'https://fmapi.net/api/presigned/mock' } }
+  }
+  if (event === 'captureImage') {
+    const property = properties.find((item) => item.id === payload.propertyId)
+    if (!property) return fail('property_not_found')
+    property.image = 'https://r2.fivemanage.com/images/house-preview.jpg'
+    return { ok: true, data: { imageUrl: property.image } }
   }
   return fail('unsupported')
 }

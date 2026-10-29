@@ -12,10 +12,33 @@ Housing.Config.Housing = {
     defaultStashWeight = 100000,
     billRates = {
         property_tax = { percentOfValueBps = 10, intervalHours = 168, label = 'Property Tax' },
-        water = { amount = 150, intervalHours = 72, label = 'Water Bill' },
-        electricity = { amount = 220, intervalHours = 72, label = 'Electricity Bill' },
     },
     -- percentOfValueBps is basis points of purchase price (10 = 0.10%).
+    -- Water, power, and garbage are rolled once per week for the whole city.
+    -- The same amount is billed to every occupied property until the next week.
+    utilities = {
+        intervalHours = 168,
+        types = {
+            water = { label = 'Water', min = 75, max = 280 },
+            electricity = { label = 'Power', min = 90, max = 360 },
+            garbage = { label = 'Garbage', min = 40, max = 190 },
+        },
+    },
+}
+
+Housing.Config.Images = {
+    -- Paste a FiveManage URL, or capture one when screenshot-basic is started.
+    -- The API key stays in the server convar `housing_fivemanage_key`. Never put it in this file.
+    provider = 'fivemanage',
+    convar = 'housing_fivemanage_key',
+    allowedHosts = { 'r2.fivemanage.com', 'fivemanage.com', 'fmapi.net' },
+}
+
+Housing.Config.Zones = {
+    -- Square lot used when a property has no polygon. Replace it with zone.points from /pzcreate.
+    defaultSize = 24.0,
+    debug = false,
+    checkMs = 750,
 }
 
 Housing.Config.Furniture = {
@@ -67,16 +90,21 @@ Housing.Config.Integrations = {
         custom = { resource = nil, exportName = nil },
     },
     garage = {
-        -- none uses the built-in plate/model store. event/export delegates and does not invent a garage API.
-        system = 'none',
-        event = nil,
-        exportResource = nil,
-        exportName = nil,
+        -- auto registers the first started garage that has a published house API.
+        -- builtin keeps only the plate list in this resource.
+        -- qb-garages | jg-advancedgarages | qs-advancedgarages | builtin
+        system = 'auto',
+    },
+    banking = {
+        -- auto records the withdrawal in the first started banking resource.
+        -- The framework still moves the money. The banking export only writes the statement.
+        -- renewed | qb-banking | okokBanking | none
+        system = 'auto',
     },
     dispatch = {
-        -- none | ps-dispatch | custom
-        -- ps-dispatch is invoked on the officer client because CustomAlert is a client export.
-        system = 'none',
+        -- auto | none | ps-dispatch | cd_dispatch | qs-dispatch | rcore_dispatch | lb-tablet | custom
+        system = 'auto',
+        -- ps-dispatch builds after version 3 may expect the job name `leo` before an alert shows a blip.
         jobs = { 'police', 'sheriff' },
     },
     mdt = {

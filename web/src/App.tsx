@@ -80,6 +80,7 @@ const titles: Record<Page, [string, string]> = {
 }
 
 function photoFor(image?: string) {
+  if (image && image.startsWith('https://')) return image
   if (image === 'apartment') return apartmentPhoto
   if (image === 'trailer') return trailerPhoto
   if (image === 'house') return housePhoto
@@ -156,6 +157,7 @@ export function App() {
   const [grantId, setGrantId] = useState('')
   const [grantName, setGrantName] = useState('')
   const [grantRole, setGrantRole] = useState('resident')
+  const [imageUrl, setImageUrl] = useState('')
   const busyRef = useRef(false)
   const modalRef = useRef(modal)
   modalRef.current = modal
@@ -374,6 +376,24 @@ export function App() {
                     )}
                   </div>
                   <p className="muted stay">{selected.bedrooms} bed · {selected.bathrooms} bath · {selected.garages} garage</p>
+                  {(selected.role === 'owner' || dash.admin) && (
+                    <form className="image-form" onSubmit={(event) => {
+                      event.preventDefault()
+                      void run(async () => {
+                        const result = await nui('setPropertyImage', { propertyId: selected.id, imageUrl })
+                        setNotice(result.ok ? 'House image saved' : (result.error ?? 'image_failed'))
+                        if (result.ok) await refresh(selected.id)
+                      })
+                    }}>
+                      <input aria-label="House image URL" placeholder="https://r2.fivemanage.com/..." value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} />
+                      <button className="ghost" type="submit" disabled={busy || imageUrl.trim() === ''}>Save image</button>
+                      <button className="ghost" type="button" disabled={busy} onClick={() => run(async () => {
+                        const result = await nui('captureImage', { propertyId: selected.id })
+                        setNotice(result.ok ? 'House image captured' : (result.error ?? 'image_failed'))
+                        if (result.ok) await refresh(selected.id)
+                      })}>Capture</button>
+                    </form>
+                  )}
                 </div>
               </div>
             )}
@@ -446,6 +466,14 @@ export function App() {
                   <div className="metric"><span>Amount due</span><b>{money(dueTotal)}</b></div>
                   <div className="metric"><span>Bank</span><b>{money(dash.balance)}</b></div>
                 </div>
+                {dash.utilities && (
+                  <div className="rates">
+                    <span>This week</span>
+                    <span>Water<b>{money(dash.utilities.rates.water ?? 0)}</b></span>
+                    <span>Power<b>{money(dash.utilities.rates.electricity ?? 0)}</b></span>
+                    <span>Garbage<b>{money(dash.utilities.rates.garbage ?? 0)}</b></span>
+                  </div>
+                )}
                 <table className="table">
                   <thead>
                     <tr><th>Status</th><th>Period</th><th>Type</th><th>Amount</th><th>Actions</th></tr>
