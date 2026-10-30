@@ -1,5 +1,7 @@
 # Installation
 
+Day-to-day use and a test pass are in [HOW_TO_USE.md](HOW_TO_USE.md).
+
 ## Place the resource
 
 Copy this repository to `resources/advanced_housing`. The folder name has to match the resource name in `fxmanifest.lua`.

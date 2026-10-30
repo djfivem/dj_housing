@@ -11,7 +11,7 @@ lua5.4 tests/run.lua
 Result:
 
 ```text
-RESULT 58 passed, 0 failed
+RESULT 81 passed, 0 failed
 ```
 
 The same run's checks cover property loading, duplicate ids, purchase debit and replay, price mismatch, insufficient funds, a second concurrent buyer losing, shell allow-list rejection, grant compensation, rental expiry, forged key metadata, guest keys isolated per property, revocation, stash authorisation, unknown and cross-property stashes, warrant self-approval, raid authorise-then-active, inspection, unrelated property search, seizure plus an idempotent retry, framework ambiguity, standalone admin denial and no overdraft, inventory ambiguity, rate limiting, stable routing buckets, lot polygons, weekly utility rolls, image hosts, a FiveManage presign stand-in, a qb-banking statement stand-in, jg garage registration and access refresh, and origen/codem detection. The latest run was 81 passed, 0 failed.
